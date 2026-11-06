@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# ESP-IDF Component Registry manifest
+# Docs: https://docs.espressif.com/projects/idf-component-manager/
+version: 0.1.0
+targets:
+  - esp32s3
+description: >-
+  POSIX-style C component library for small robots: IMU driver (LSM6DS3TR-C),
+  attitude fusion (quaternion + Mahony), motor control (PWM timer + PID + S-curve),
+  and parameter persistence (two-phase atomic load). Zero hardcoded parameters —
+  everything comes from named preset tables.
+maintainers:
+  - xiao-robot-kit
+# dependencies: none — pure C core; platform buses are injected as function tables
