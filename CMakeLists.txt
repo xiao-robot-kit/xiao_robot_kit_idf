@@ -74,7 +74,34 @@ target_include_directories(xiao_pstore PUBLIC
     $<INSTALL_INTERFACE:include/pstore>)
 target_compile_features(xiao_pstore PUBLIC c_std_11)
 
-set(XIAO_LIBS_TARGETS xiao_imu xiao_attitude xiao_motor xiao_pstore)
+# ------------------------------------------------------------ xiao_battery
+add_library(xiao_battery STATIC
+    src/battery/battery.c)
+target_include_directories(xiao_battery PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/battery>
+    $<INSTALL_INTERFACE:include/battery>)
+target_compile_features(xiao_battery PUBLIC c_std_11)
+
+# -------------------------------------------------------- xiao_calibration
+add_library(xiao_calibration STATIC
+    src/calibration/imu_calib.c
+    src/calibration/temp_comp.c)
+target_include_directories(xiao_calibration PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/calibration>
+    $<INSTALL_INTERFACE:include/calibration>)
+target_compile_features(xiao_calibration PUBLIC c_std_11)
+# imu_calib.h includes imu_types.h from xiao_imu (sample type contract)
+target_link_libraries(xiao_calibration PUBLIC xiao_imu)
+
+# ---------------------------------------------------------- xiao_imu_heater
+add_library(xiao_imu_heater STATIC
+    src/imu_heater/imu_heater.c)
+target_include_directories(xiao_imu_heater PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/imu_heater>
+    $<INSTALL_INTERFACE:include/imu_heater>)
+target_compile_features(xiao_imu_heater PUBLIC c_std_11)
+
+set(XIAO_LIBS_TARGETS xiao_imu xiao_attitude xiao_motor xiao_pstore xiao_battery xiao_calibration xiao_imu_heater)
 
 # ---------------------------------------------------------------- install +
 # target export (only meaningful for a standalone build; when this tree is
@@ -113,6 +140,16 @@ if(XIAO_LIBS_STANDALONE)
     install(FILES
         src/pstore/pstore.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pstore)
+    install(FILES
+        src/battery/battery.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/battery)
+    install(FILES
+        src/calibration/imu_calib.h
+        src/calibration/temp_comp.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/calibration)
+    install(FILES
+        src/imu_heater/imu_heater.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/imu_heater)
 
     set(XIAO_LIBS_INSTALL_CMAKEDIR ${CMAKE_INSTALL_LIBDIR}/cmake/xiao-libs)
     install(EXPORT xiao-libs-targets
@@ -160,6 +197,21 @@ if(XIAO_LIBS_STANDALONE)
         foreach(t test_pstore)
             add_executable(${t} tests/pstore/${t}.c)
             target_link_libraries(${t} PRIVATE xiao_pstore)
+            add_test(NAME ${t} COMMAND ${t})
+        endforeach()
+        foreach(t test_battery)
+            add_executable(${t} tests/battery/${t}.c)
+            target_link_libraries(${t} PRIVATE xiao_battery)
+            add_test(NAME ${t} COMMAND ${t})
+        endforeach()
+        foreach(t test_calibration)
+            add_executable(${t} tests/calibration/${t}.c)
+            target_link_libraries(${t} PRIVATE xiao_calibration)
+            add_test(NAME ${t} COMMAND ${t})
+        endforeach()
+        foreach(t test_imu_heater)
+            add_executable(${t} tests/imu_heater/${t}.c)
+            target_link_libraries(${t} PRIVATE xiao_imu_heater)
             add_test(NAME ${t} COMMAND ${t})
         endforeach()
     endif()

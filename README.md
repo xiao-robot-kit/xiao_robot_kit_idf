@@ -30,6 +30,9 @@ or bare metal.
 | `xiao_attitude` | `src/attitude/` | Quaternion math + Mahony complementary filter (gyro + accel → roll/pitch/yaw) | 107 assertions |
 | `xiao_motor` | `src/motor/` | Motor instances on a HAL: PWM timer, PID speed loop with anti-windup, 7-phase constant-jerk S-curve trajectories | 1022 assertions |
 | `xiao_pstore` | `src/pstore/` | Parameter persistence: item registry, framed serialization, CRC32, two-phase atomic load | 153 assertions |
+| `xiao_battery` | `src/battery/` | Battery voltage / remaining capacity (SOC) curve computation, pure algorithm, zero platform deps | 35 assertions |
+| `xiao_calibration` | `src/calibration/` | IMU calibration (6-axis bias + temp compensation), uses xiao_imu types | 3402 assertions |
+| `xiao_imu_heater` | `src/imu_heater/` | Thermistor-based heater controller state machine for IMU preheating | 40 assertions |
 
 ## Quickstart (ESP-IDF, esp32s3)
 
