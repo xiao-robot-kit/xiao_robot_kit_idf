@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Build artifacts only - sources are all tracked.
 build/
+build-qemu/
+managed_components/
 sdkconfig.old
 *.exe
 __pycache__/
