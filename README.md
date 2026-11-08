@@ -3,10 +3,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-POSIX-style C component library for the **XIAO Robot Kit** (ESP32-S3): **seven
+POSIX-style C component library for the **XIAO Robot Kit** (ESP32-S3): **eight
 components** — IMU driver, attitude fusion, motor control, parameter
-persistence, battery gauge, IMU calibration and IMU heater — with **zero
-hardcoded parameters**: every tunable lives in a named preset table.
+persistence, battery gauge, IMU calibration, IMU heater and the serial frame
+codec — with **zero hardcoded parameters**: every tunable lives in a named
+preset table.
 
 The C core is platform-neutral; it never includes a platform header. Buses and
 PWM are injected as function-pointer tables, so the same code runs on
@@ -25,7 +26,7 @@ standalone ESP-IDF project.
 - **Zero hardcoded parameters** — rates, ranges, periods and controller
   gains all come from preset registries (`imu.raw.104`, `motor.servo.sg90`,
   …). No magic numbers in code; presets are data, not `#define`s.
-- **Tested** — 5,004 assertions across 10 test binaries, all green (`ctest` 10/10).
+- **Tested** — 5,052 assertions across 11 test binaries, all green (`ctest` 11/11).
   Counts below are the actual printed numbers from each binary, not estimates.
 
 ## Components
@@ -39,6 +40,7 @@ standalone ESP-IDF project.
 | `xiao_battery` | `src/battery/` | Battery voltage / remaining capacity (SOC) curve computation, pure algorithm, zero platform deps | 35 assertions |
 | `xiao_calibration` | `src/calibration/` | IMU calibration (6-axis bias + temp compensation), uses xiao_imu types | 3402 assertions |
 | `xiao_imu_heater` | `src/imu_heater/` | Heater controller state machine for IMU preheating (hysteresis + overheat guard + watchdog) | 40 assertions |
+| `xiao_proto` | `src/proto/` | Serial frame codec shared by firmware and host app: SOF/LEN/TYPE/SEQ/PAYLOAD/CRC8 (poly 0x07), frame type table and CMD/ACK addressing. The header is the wire-format contract | 48 assertions |
 
 ## Quickstart (ESP-IDF, esp32s3)
 
@@ -104,7 +106,7 @@ ctest --test-dir build          # per-library unit tests
 ```
 xiao_robot_kit_idf/
 ├── idf_component.yml       # ESP-IDF component manifest (esp32s3)
-├── CMakeLists.txt          # plain-CMake library mode: all seven xiao_* libs
+├── CMakeLists.txt          # plain-CMake library mode: all eight xiao_* libs
 ├── LICENSE                 # MIT
 ├── src/
 │   ├── imu/                #   lsm6ds3 driver + preset registry (flat: headers + sources)
@@ -113,7 +115,8 @@ xiao_robot_kit_idf/
 │   ├── pstore/             #   persistence: registry + framing + CRC32
 │   ├── battery/            #   ADC voltage → SOC curve
 │   ├── calibration/        #   IMU bias + temp compensation
-│   └── imu_heater/         #   heater control state machine
+│   ├── imu_heater/         #   heater control state machine
+│   └── proto/              #   serial frame codec (wire-format contract)
 ├── tests/                  #   per-component unit tests (each defines main())
 └── examples/
     ├── idf/imu_quickstart/ #   ESP-IDF: minimal streaming project

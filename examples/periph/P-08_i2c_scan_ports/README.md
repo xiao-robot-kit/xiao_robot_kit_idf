@@ -37,7 +37,7 @@
 | QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_SCAN=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 188,880 B（2026-11-07 实测） |
 | QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
-## 五、组件对接（P-08 → Base_Library）
+## 五、组件对接（P-08 → xiao_* 组件）
 
 - **扫描端点**：`port/esp_idf` 新增 `esp_port_i2c_probe(addr, timeout_ms)`（P-08 引入，
   真档扫任意地址；单器件 read/write 的 addr=0x6A 契约不变）。

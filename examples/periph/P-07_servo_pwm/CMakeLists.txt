@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # P-07_servo_pwm — 4 路舵机 PWM 例程（0°/90°/180° 定位 + 电压联动告警）
-# 链路：motor 组件（Base_Library components/motor，motor.servo.sg90 @ pwm.servo.50）
+# 链路：xiao_motor 组件（预设 motor.servo.sg90 @ pwm.servo.50）
 #      + 合成 PWM HAL（port/esp_idf/motor_hal_sim.c，QEMU 无 LEDC 模型）
 #      → 四槽错相扫角表 → 文本遥测 → UART0(QEMU 档) / USB-Serial-JTAG(真板档)
 cmake_minimum_required(VERSION 3.16)

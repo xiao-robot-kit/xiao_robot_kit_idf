@@ -42,7 +42,7 @@
 #if P_SIM_IMU
 #include "imu_sim.h"          /* testing/imu_sim：合成源（跨实验共享单源，只读） */
 #else
-#include "lsm6ds3.h"      /* vendor Base_Library：驱动 v0.1.0+ pin（MEM-4 只读） */
+#include "lsm6ds3.h"      /* 公开库驱动：xiao_imu（flat include） */
 #include "imu_cfg.h"
 #include "port_i2c.h"         /* port/esp_idf：I2C 平台端点（唯一 esp 头出现处） */
 #endif

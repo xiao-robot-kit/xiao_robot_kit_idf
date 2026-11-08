@@ -1,14 +1,19 @@
 # SPDX-License-Identifier: MIT
 # Top-level CMake build for the XIAO Robot Kit C core libraries.
 #
-# Four independent, platform-free C libraries (headers and sources are laid
-# out flat inside each library directory, so a consumer only needs that one
-# directory on its include path):
+# Independent, platform-free C libraries (headers and sources are laid out flat
+# inside each library directory, so a consumer only needs that one directory on
+# its include path):
 #
 #   xiao_imu       - LSM6DS3TR-C 6-axis IMU driver (I2C bus table + preset registry)
 #   xiao_attitude  - quaternion math + Mahony complementary filter (uses xiao_imu types)
 #   xiao_motor     - PWM timer / PID / S-curve profile / motor instances (HAL tables)
 #   xiao_pstore    - parameter persistence (item registry + framed serialization + CRC32)
+#   xiao_battery   - battery voltage divider -> cell voltage / SoC percent
+#   xiao_calibration - IMU bias calibration window + temperature drift compensation
+#   xiao_imu_heater - on-die heater duty state machine (thermal window control)
+#   xiao_proto     - serial frame codec shared by firmware examples and host app
+#                    (SOF/LEN/TYPE/SEQ/PAYLOAD/CRC8; frame type + CMD/ACK table)
 #
 # Standalone build (library mode + optional tests):
 #   cmake -S . -B build
@@ -101,7 +106,18 @@ target_include_directories(xiao_imu_heater PUBLIC
     $<INSTALL_INTERFACE:include/imu_heater>)
 target_compile_features(xiao_imu_heater PUBLIC c_std_11)
 
-set(XIAO_LIBS_TARGETS xiao_imu xiao_attitude xiao_motor xiao_pstore xiao_battery xiao_calibration xiao_imu_heater)
+# ---------------------------------------------------------------- xiao_proto
+# Serial frame contract: firmware examples and the host app must agree byte for
+# byte, so this codec is the single source of the wire format (SOF 0xA5,
+# CRC8 poly 0x07 init 0x00 over LEN..PAYLOAD). payload <= PROTO_PAYLOAD_MAX (96).
+add_library(xiao_proto STATIC
+    src/proto/frame.c)
+target_include_directories(xiao_proto PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/proto>
+    $<INSTALL_INTERFACE:include/proto>)
+target_compile_features(xiao_proto PUBLIC c_std_11)
+
+set(XIAO_LIBS_TARGETS xiao_imu xiao_attitude xiao_motor xiao_pstore xiao_battery xiao_calibration xiao_imu_heater xiao_proto)
 
 # ---------------------------------------------------------------- install +
 # target export (only meaningful for a standalone build; when this tree is
@@ -150,6 +166,9 @@ if(XIAO_LIBS_STANDALONE)
     install(FILES
         src/imu_heater/imu_heater.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/imu_heater)
+    install(FILES
+        src/proto/frame.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/proto)
 
     set(XIAO_LIBS_INSTALL_CMAKEDIR ${CMAKE_INSTALL_LIBDIR}/cmake/xiao-libs)
     install(EXPORT xiao-libs-targets
@@ -212,6 +231,11 @@ if(XIAO_LIBS_STANDALONE)
         foreach(t test_imu_heater)
             add_executable(${t} tests/imu_heater/${t}.c)
             target_link_libraries(${t} PRIVATE xiao_imu_heater)
+            add_test(NAME ${t} COMMAND ${t})
+        endforeach()
+        foreach(t test_proto)
+            add_executable(${t} tests/proto/${t}.c)
+            target_link_libraries(${t} PRIVATE xiao_proto)
             add_test(NAME ${t} COMMAND ${t})
         endforeach()
     endif()

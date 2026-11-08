@@ -2,7 +2,7 @@
 
 ## 目标
 电机校准 / 舵机中位参数**写入断电重启后读回一致**
-——pstore 组件（Base_Library）做参数序列化，flash 裸分区后端持久化。
+——pstore 组件（`xiao_pstore`）做参数序列化，flash 裸分区后端持久化。
 
 ## 覆盖点（任务书 §4）
 - pstore 组件：多条目注册（`motor.cal` / `servo.center`）、整帧 CRC32、两阶段原子加载

@@ -35,10 +35,10 @@
 | QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_HEAT=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 191,168 B（2026-11-08 实测） |
 | QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
-## 五、组件对接（P-10 → Base_Library）
+## 五、组件对接（P-10 → xiao_* 组件）
 
-- **控制层**：`vendor/.../imu_heater`（纯算法状态机，预设 thermo45）；P-10 提供温度输入 + 开度消费 + 保护增强（软看门狗为例程侧策略）
-- **温补**：`vendor/.../calibration` 的 `temp_comp`（应用段）；恒温窗内每拍 `apply` 输出补偿零偏，验证「温度稳定 → 温漂补偿收敛」（温标拟合段由 exp2 承接）
+- **控制层**：`xiao_imu_heater`（纯算法状态机，预设 thermo45）；P-10 提供温度输入 + 开度消费 + 保护增强（软看门狗为例程侧策略）
+- **温补**：`xiao_calibration` 的 `temp_comp`（应用段）；恒温窗内每拍 `apply` 输出补偿零偏，验证「温度稳定 → 温漂补偿收敛」（温标拟合段由 exp2 承接）
 - **真板闭环前提**：LEDC 加热 PWM 端点（D12 单通道）+ 温度直读 —— 均列入 T-017 联调清单
 ## 依赖声明（Dependencies）
 

@@ -17,7 +17,7 @@
  * 输出层：EXP_QEMU_UART=1 → UART0（QEMU chardev 出口）；0（默认）→ USB-Serial-JTAG。
  * 串口参数：115200 8N1。
  *
- * pstore 组件（vendor/Base_Library）：单帧多条目（CRC32 覆盖 count+data），
+ * pstore 组件（xiao_pstore）：单帧多条目（CRC32 覆盖 count+data），
  * 两阶段原子（load 先校验整帧再复制），介质操作由 port 层 flash 后端承接。
  */
 

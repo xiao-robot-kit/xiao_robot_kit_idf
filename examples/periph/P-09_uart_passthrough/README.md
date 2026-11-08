@@ -35,7 +35,7 @@
 | QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_UART=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 188,720 B（2026-11-07 实测） |
 | QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
-## 五、组件对接（P-09 → Base_Library）
+## 五、组件对接（P-09 → xiao_* 组件）
 
 - **数据面/日志面分离**：UART0 透传数据、USB-Serial-JTAG 日志——为 P-09~P-13 的
   "设备口 + 调试口"共存模式提供模板（真板 J10 接外设时日志不占数据带宽）。
