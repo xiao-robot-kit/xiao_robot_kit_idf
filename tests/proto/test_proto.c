@@ -9,7 +9,7 @@
  * behaviour, so any accidental change to the encoding fails here first.
  */
 
-#include "frame.h"
+#include "proto/frame.h"
 
 #include <stdio.h>
 #include <string.h>

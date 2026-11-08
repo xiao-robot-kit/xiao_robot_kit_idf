@@ -1,20 +1,22 @@
 /* SPDX-License-Identifier: MIT */
 /**
  * @file    test_scurve.c
- * @brief   S 梯度轨迹发生器单测
+ * @brief   S 梯度轨迹发生器单测（旧式实现 test_scurve.c 全用例移植 + 任务指定新边界）
  *
- * 覆盖：① 七相位全程回放（切换点/取值/界内/单调逐一断言 + done 恒终值）
- *   ② 匀加/匀速段多步恒斜率（每步 Δv/Δp 恒定）
- *   ③ 巡航段 100 步 v 恒 vmax、p 线性推进
- *   ④ 重新 init 复位重走（前缀逐拍一致）
- *   ⑤ 零行程 target=0 合法、恒 0
- *   ⑥ 非法 cfg/target 拒 + 不动安全态
- *   ⑦ NULL / 零初始化结构体全防御
- *   ⑧ dt 整除总时长末点不重复（防「整除末点重复」坑）
- *   ⑨ 短行程退化（三角 6 相 / 超短 4 相 / d_full 精确边界 / vmax<vswitch 5 相）
- *   ⑩ 中途改 target 重规划（保守停稳再走；非法 retarget 保旧计划）
- *   ⑪ 负方向镜像
- *   ⑫ 预设表
+ * 旧→新用例映射（旧式实现 embedded/testing/test_scurve.c，表回放语义 → 闭式生成语义）：
+ *   旧① 逐步表回放 + STOP 停机  → 块1 七相位全程回放（边界逐一断言）+ done 恒终值
+ *   旧② 分级表重复步数          → 块2 匀加/匀速段多步恒斜率（每步 Δv/Δp 恒定）
+ *   旧③ HOLD_CRUISE 末项保持    → 块3 巡航段 100 步 v 恒 vmax、p 线性推进
+ *   旧④ rewind 复位重走加速     → 块4 重新 init 复位重走（前缀逐拍一致）
+ *   旧⑤ 空表合法立即 done       → 块5 零行程 target=0 合法、恒 0
+ *   旧⑥ 表内 0 项拒 + 安全态    → 块6 非法 cfg/target 拒 + 不动安全态
+ *   旧⑦ NULL 表拒               → 块7 NULL / 零初始化结构体全防御
+ * 新增边界（任务指定）：
+ *   块8  dt 整除总时长末点不重复（防旧式实现 host poly_profile「整除末点重复」雷）
+ *   块9  短行程退化（三角 6 相 / 超短 4 相 / d_full 精确边界 / vmax<vswitch 5 相）
+ *   块10 中途改 target 重规划（保守停稳再走；非法 retarget 保旧计划）
+ *   块11 负方向镜像
+ *   块12 预设表
  *
  * 网格对齐主 cfg（dyadic：所有段时长/边界值/速度均为 2 的幂次分母，双精度与
  * float32 均精确表示，相位翻转步数可精确断言）：
@@ -26,7 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "scurve.h"
+#include "mtr/scurve.h"
 
 static int s_fail = 0;
 #define CHECK(cond) do { \
@@ -102,7 +104,7 @@ static int seq_has(const scurve_phase_t *seq, int n, scurve_phase_t ph)
 
 int main(void)
 {
-    /* ① 七相位全程回放：dyadic 网格对齐，切换点/取值/界内/单调逐一断言 */
+    /* ①（旧①）七相位全程回放：dyadic 网格对齐，切换点/取值/界内/单调逐一断言 */
     {
         scurve_t s;
         scurve_state_t st;
@@ -151,7 +153,7 @@ int main(void)
         CHECK(scurve_done(&s) == 1);
         NEAR(vp, 2.0, 1e-9);
         NEAR(ap, 4.0, 1e-9);
-        NEAR(scurve_step(&s), 2.03125, 0.0);                /* 走完恒终值 */
+        NEAR(scurve_step(&s), 2.03125, 0.0);                /* 旧①『走完恒 0』→ 恒终值 */
         NEAR(scurve_step(&s), 2.03125, 0.0);
         NEAR(scurve_step(&s), 2.03125, 0.0);
         CHECK(scurve_get(&s, &st) == 0);
@@ -160,7 +162,7 @@ int main(void)
         printf("ok: 七相位全程回放（7 切换点/界内/单调/done 恒终值）\n");
     }
 
-    /* ② 匀加/匀速段多步恒斜率 */
+    /* ②（旧②）匀加/匀速段多步恒斜率：分级重复的闭式同构 */
     {
         scurve_t s;
         scurve_state_t st, prev;
@@ -199,10 +201,10 @@ int main(void)
             if (k == 65) CHECK(st.phase == SCURVE_PHASE_JERK_DN2);
             prev = st;
         }
-        printf("ok: 匀加每步 Δv=amax·dt / 匀速全平坦 Δp=vmax·dt\n");
+        printf("ok: 匀加每步 Δv=amax·dt / 匀速全平坦 Δp=vmax·dt（旧②同构）\n");
     }
 
-    /* ③ 巡航保持：长巡航 100 步 v 恒 vmax、p 线性推进 */
+    /* ③（旧③ HOLD_CRUISE）巡航保持：长巡航 100 步 v 恒 vmax、p 线性推进 */
     {
         scurve_t s;
         scurve_state_t st, prev;
@@ -215,7 +217,7 @@ int main(void)
         CHECK(st.phase == SCURVE_PHASE_CRUISE);
         NEAR(st.vel, 2.0, 1e-9);
         prev = st;
-        for (i = 0; i < 100; i++) {                          /* 100 次恒值 */
+        for (i = 0; i < 100; i++) {                          /* 旧③的 100 次恒值 */
             (void)scurve_step(&s);
             CHECK(scurve_get(&s, &st) == 0);
             NEAR(st.vel, 2.0, 1e-9);
@@ -226,10 +228,10 @@ int main(void)
         CHECK(rest == 61);                                   /* 194 − 133 剩余步数 */
         CHECK(scurve_get(&s, &st) == 0);
         CHECK(st.pos == 5.03125f && st.vel == 0.0f);
-        printf("ok: 巡航 100 步恒 vmax 线性推进\n");
+        printf("ok: 巡航 100 步恒 vmax 线性推进（旧③ HOLD_CRUISE 同构）\n");
     }
 
-    /* ④ 重新 init = 复位重走：前缀逐拍一致 */
+    /* ④（旧④ rewind）重新 init = 复位重走：前缀逐拍一致 */
     {
         scurve_t s;
         float p1[20], p2[20];
@@ -238,7 +240,7 @@ int main(void)
 
         CHECK(scurve_init(&s, &CFG_D, 2.03125f) == 0);
         for (i = 0; i < 20; i++) p1[i] = scurve_step(&s);
-        CHECK(scurve_init(&s, &CFG_D, 2.03125f) == 0);      /* rewind 语义：重装计划 */
+        CHECK(scurve_init(&s, &CFG_D, 2.03125f) == 0);      /* rewind 同构：重装计划 */
         CHECK(scurve_done(&s) == 0);
         for (i = 0; i < 20; i++) {
             p2[i] = scurve_step(&s);
@@ -246,10 +248,10 @@ int main(void)
         }
         CHECK(run_to_done(&s, 200, &vp, &ap) == 78);         /* 98 − 20 */
         CHECK(scurve_done(&s) == 1);
-        printf("ok: 重新 init 复位重走（rewind 语义）\n");
+        printf("ok: 重新 init 复位重走（旧④ rewind 同构）\n");
     }
 
-    /* ⑤ 零行程：target=0 合法、立即 done、恒 0 */
+    /* ⑤（旧⑤ 空表）零行程：target=0 合法、立即 done、恒 0 */
     {
         scurve_t s;
         scurve_state_t st;
@@ -261,10 +263,10 @@ int main(void)
         CHECK(scurve_get(&s, &st) == 0);
         CHECK(st.pos == 0.0f && st.vel == 0.0f && st.acc == 0.0f);
         CHECK(st.phase == SCURVE_PHASE_DONE);
-        printf("ok: 零行程合法立即 done\n");
+        printf("ok: 零行程合法立即 done（旧⑤ 空表同构）\n");
     }
 
-    /* ⑥ 非法 cfg 拒 + 不动安全态（一步都不输出） */
+    /* ⑥（旧⑥ 表内 0 项）非法 cfg 拒 + 不动安全态（一步都不输出） */
     {
         scurve_t s;
         scurve_state_t st;
@@ -292,10 +294,10 @@ int main(void)
         }
         CHECK(scurve_init(&s, &CFG_D, HUGE_VALF) == -1);    /* 非有限 target 拒 */
         CHECK(scurve_init(&s, &CFG_D, NAN) == -1);
-        printf("ok: 参数越界拒 + 不动安全态（%d 例）\n", n_bad);
+        printf("ok: 参数越界拒 + 不动安全态（旧⑥同构，%d 例）\n", n_bad);
     }
 
-    /* ⑦ NULL / 零初始化结构体全接口防御 */
+    /* ⑦（旧⑦ NULL）NULL / 零初始化结构体全接口防御 */
     {
         scurve_t s, z;
         scurve_state_t st;
@@ -314,10 +316,10 @@ int main(void)
         CHECK(scurve_get(&z, &st) == -1);
         CHECK(scurve_retarget(&z, 1.0f) == -1);
         CHECK(scurve_phase(&z) == SCURVE_PHASE_DONE);
-        printf("ok: NULL/零初始化防御\n");
+        printf("ok: NULL/零初始化防御（旧⑦同构）\n");
     }
 
-    /* ⑧ dt 整除总时长末点不重复：T = 98·dt 精确整除 */
+    /* ⑧（新）dt 整除总时长末点不重复：T = 98·dt 精确整除 */
     {
         scurve_t s;
         scurve_cfg_t c = CFG_D;
@@ -361,7 +363,7 @@ int main(void)
         printf("ok: dt 整除总时长末点不重复（98 拍恰 98、终值一次；非整除 77 拍同性质）\n");
     }
 
-    /* ⑨ 短行程退化 */
+    /* ⑨（新）短行程退化 */
     {
         scurve_t s;
         scurve_state_t st;
@@ -512,7 +514,7 @@ int main(void)
         }
     }
 
-    /* ⑩ 中途改 target 重规划（保守停稳再走） */
+    /* ⑩（新）中途改 target 重规划（保守停稳再走） */
     {
         scurve_t s;
         scurve_state_t st, st0;
@@ -589,7 +591,7 @@ int main(void)
         printf("ok: retarget e) 非法目标拒改、旧计划保走到 2.03125\n");
     }
 
-    /* ⑪ 负方向镜像：相位序不变、v/a 取镜像符号、精确收敛 */
+    /* ⑪（新）负方向镜像：相位序不变、v/a 取镜像符号、精确收敛 */
     {
         scurve_t s;
         scurve_state_t st;
@@ -634,7 +636,7 @@ int main(void)
         printf("ok: 负方向镜像（相位序同正向、收敛 -2.03125）\n");
     }
 
-    /* ⑫ 预设表：find/字段校验/实走一条 */
+    /* ⑫（新）预设表：find/字段校验/实走一条 */
     {
         scurve_t s;
         scurve_state_t st;

@@ -5,19 +5,20 @@
  *          饱和锁定 / 复位清态 / 参数非法拒 / 多实例独立
  *
  * 场景参数一律以命名常量写在各用例头部（场景即文档）；被控对象为合成一阶模型
- * dv = (u − v)/tau（欧拉离散），闭环结构为合成对象仿真。
+ * dv = (u − v)/tau（欧拉离散），闭环结构同旧式实现 旧式实现 的 simulate()。
  * 抗饱和回灌方向的断言用【带符号精确值】锁定（符号反了必红——量具先能红）。
  *
- * 运行（库根目录下）：
- *   gcc -std=c11 -Wall -Wextra -Isrc/motor \
- *       src/motor/pid.c src/motor/tests/test_pid.c -lm -o build/test_pid
- *   ./build/test_pid    （退出码 0 = 全绿）
+ * 运行（xiao 组件库 目录下，与本文件头注命令一致）：
+ *   gcc -std=c99 -Wall -Wextra -Icomponents/motor/include \
+ *       components/motor/src/pid.c components/motor/tests/test_pid.c \
+ *       -o components/motor/tests/test_pid.exe
+ *   ./components/motor/tests/test_pid.exe    （退出码 0 = 全绿）
  */
 #include <math.h>     /* NAN / INFINITY 宏（编译期内建，无库调用） */
 #include <stdio.h>
 #include <string.h>   /* memset */
 
-#include "pid.h"
+#include "mtr/pid.h"
 
 static int g_failed = 0;   /* 失败断言计数（测试文件自有，非库状态） */
 static int g_total = 0;
@@ -54,7 +55,7 @@ static void test_step_convergence(void)
     const float sp = 1.0f;              /* 阶跃目标 */
     const int   n_steps = 1000;         /* 总时长 1 s */
     const float tol_final = 1e-3f;      /* 终值容差 */
-    const float tol_overshoot = 0.15f;  /* 超调上限 15% */
+    const float tol_overshoot = 0.15f;  /* 超调上限 15%（旧式实现跟踪用例口径） */
 
     pid_t pid;
     float v = 0.0f, v_peak = 0.0f, u_max_seen = -1e30f;
@@ -90,7 +91,7 @@ static void test_preset_registry(void)
     const float dt = 0.001f;
     const float sp = 40.0f;        /* duty% 量纲（与预设同口径） */
     const int   n_steps = 2000;    /* 2 s */
-    const float tol_final = 0.5f;  /* 跟踪容差（err_ss < 0.5） */
+    const float tol_final = 0.5f;  /* 旧式实现跟踪用例容差口径（err_ss < 0.5） */
 
     pid_t pid;
     const pid_cfg_t *found = pid_cfg_find("pid.vel_pi.default");
@@ -107,7 +108,7 @@ static void test_preset_registry(void)
               && near_f(found->out_min, -100.0f, 1e-6f)
               && near_f(found->out_max, 100.0f, 1e-6f)
               && near_f(found->kb, 1.0f, 1e-6f),
-          "预设值锁定（kp=2/ki=20/±100/kb=1）");
+          "预设值锁定（旧式实现 PIParams 默认：kp=2/ki=20/±100/kb=1）");
 
     {   /* 全部预设 cfg 必须能通过 pid_init（预设合法性不变式） */
         int all_ok = 1;
@@ -234,11 +235,11 @@ static void test_backfeed_direction(void)
     }
 }
 
-/* ---------- 5. 闭环饱和锁定物理上限（不可达目标） ---------- */
+/* ---------- 5. 闭环饱和锁定物理上限（不可达目标，旧式实现 test_anti_windup 结构） ---------- */
 static void test_saturation_lock(void)
 {
-    /* sp=1.0 需 u_ss=1.0，但 out_max=0.3（需求 333% ⇒ 长期饱和）；
-       稳态 v 锁在 0.3（物理上限），积分有界（平衡 i≈12.3）。
+    /* sp=1.0 需 u_ss=1.0，但 out_max=0.3（需求 333% ⇒ 长期饱和，同旧式实现
+       「需求 133%」结构）；稳态 v 锁在 0.3（物理上限），积分有界（平衡 i≈12.3）。
        无抗饱和时积分线性外推 ≥ ki·e·t = 20·0.7·3 = 42。 */
     const pid_cfg_t cfg = { .kp = 2.0f, .ki = 20.0f, .kd = 0.0f,
                             .out_min = -0.3f, .out_max = 0.3f, .kb = 1.0f };
@@ -399,7 +400,7 @@ static void test_instances_independent(void)
 
 int main(void)
 {
-    printf("=== motor/pid 单测 ===\n");
+    printf("=== mtr/pid 单测 ===\n");
     test_step_convergence();
     test_preset_registry();
     test_windup_bounded();

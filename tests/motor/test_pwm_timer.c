@@ -3,12 +3,12 @@
  * @file    test_pwm_timer.c
  * @brief   PWM 定时器实例组件无硬件单测（mock HAL：平台侧定时器资源池）
  *
- * @note    自研极简断言（不引第三方测试框架，风格对齐 test_imu.c）。
+ * @note    自研极简断言（原创律：不引第三方测试框架，风格对齐 test_imu.c）。
  * @note    验证范围：create 参数校验 / 注册表校验 / 通道占用与隔离 /
  *          多实例频率独立 / 预设表命中与未命中 / destroy 全语义
  *          （占用拦截、平台真实释放、释放失败可重试、销毁后句柄不可用）。
  *          不覆盖：malloc 失败注入（需分配器钩子）、真实 LEDC 时序（实机验证）。
- * @note    特别验证项：平台定时器「只配置不释放」会让资源池耗尽——本测以
+ * @note    防雷特别项：旧式实现 LEDC timer 只增不减（无 deinit）——本测以
  *          「release 回调完成 + 池位归还可复用 + 4 位池 10 轮循环」三重证据
  *          验证 destroy 真实释放。
  * @note    销毁后句柄检查走护栏魔数（尽力防御）：正式契约与 free() 同——
@@ -18,8 +18,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "pwm_timer.h"
-#include "pwm_hal.h"
+#include "mtr/pwm_timer.h"
+#include "mtr/pwm_hal.h"
 
 /* ---------- 极简断言 ---------- */
 static int g_pass = 0, g_fail = 0;
@@ -35,7 +35,7 @@ static int g_pass = 0, g_fail = 0;
 static int feq(float a, float b) { float d = a - b; return d < 0.000001f && d > -0.000001f; }
 
 /* ---------- mock 平台：定时器资源池（正确行为 = release 归还池位） ---------- */
-#define MOCK_TIMERS_MAX    4        /* 模拟 LEDC 定时器池容量（ESP32-S3 = 4） */
+#define MOCK_TIMERS_MAX    4        /* 模拟 LEDC 定时器池容量（S3 = 4） */
 #define MOCK_CHANNELS_MAX  8        /* 模拟单定时器通道上限 */
 #define MOCK_FREQ_MAX      1000000u /* 模拟平台载波频率上限（拒超限 = 平台能力路径） */
 
@@ -304,7 +304,7 @@ int main(void)
         CHECK_EQ(mock_release_ok, 0, "platform release not completed");
         CHECK_EQ((long)pwm_timer_freq(d), 20000, "instance kept alive on release failure");
         mock_fail_release = 0;
-        /* 重试成功：release 回调被调（防「只配置不释放」的资源泄漏路径） */
+        /* 重试成功：release 回调被调（防旧式实现「LEDC timer 只增不减」雷） */
         CHECK_EQ(pwm_timer_destroy(d), 0, "retry destroy after platform recovered");
         CHECK_EQ(mock_release_attempts, 2, "release attempted twice in total");
         CHECK_EQ(mock_release_ok, 1, "release callback completed");
@@ -318,7 +318,7 @@ int main(void)
         CHECK_EQ(mock_release_attempts, 2, "no extra platform release from dead-handle ops");
     }
     /* 真实释放循环证据：池容量 4，create/destroy 10 轮全成功
-       （「只增不减」行为下第 5 轮即资源耗尽失败） */
+       （旧式实现「只增不减」行为下第 5 轮即资源耗尽失败） */
     mock_reset();
     {
         int cycle_ok = 1;

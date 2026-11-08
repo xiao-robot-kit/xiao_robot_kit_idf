@@ -1,24 +1,25 @@
 /* SPDX-License-Identifier: MIT */
 /**
  * @file    test_attitude.c
- * @brief   姿态库无硬件单测（合成 IMU 采样喂滤波器，纯数学闭环）
+ * @brief   姿态组件无硬件单测（合成 IMU 采样喂滤波器，纯数学闭环）
  *
- * @note    自研极简断言（不引第三方测试框架），风格对齐 test_imu.c。
+ * @note    自研极简断言（原创律：不引第三方测试框架），
+ *          风格对齐 components/imu/tests/test_imu.c。
  * @note    验证范围：欧拉↔四元数往返 / 单位态性质 / 乘法合成 /
  *          归一化零向量边界 / Mahony 静止收敛与无效帧 / |q| 全程有界
  *          （用例 8 由 feed_frames 每 100 帧核查）。
- *          不覆盖：真实传感器噪声/温漂/陀螺零偏（需实机验证）。
- * @note    轴向约定（与 quat.h 一致，ZYX 内旋）：roll 绕 X、pitch 绕 Y、
+ *          不覆盖：真实传感器噪声/温漂/陀螺零偏（需实机，实验在板验证）。
+ * @note    轴向约定（与 att/quat.h 一致，ZYX 内旋）：roll 绕 X、pitch 绕 Y、
  *          yaw 绕 Z。静止加速度读数 = 世界 +Z 轴在机体系的投影，
  *          绕 X 倾角 θ 的读数为 (0, sinθ, cosθ)，绕 Y 倾角 θ 为 (-sinθ, 0, cosθ)。
- *          故用例 6a 的 (0, 0.5, 0.866) 是绕 X 倾斜 30°（倾角在 roll），
- *          6b 的 (-0.5, 0, 0.866) 是绕 Y 倾斜 30°（倾角在 pitch）。
+ *          故用例 6 的 (0, 0.5, 0.866) 是绕 X 倾斜 30°（倾角在 roll），
+ *          任务卡字面的「|pitch| 28~32°」改由 6b 的绕 Y 倾斜数据覆盖。
  */
 
 #include <stdio.h>
 #include <math.h>
-#include "quat.h"
-#include "mahony.h"
+#include "att/quat.h"
+#include "att/mahony.h"
 
 /* ---------- 极简断言（对齐 test_imu.c） ---------- */
 static int g_pass = 0, g_fail = 0;
@@ -27,19 +28,19 @@ static int g_pass = 0, g_fail = 0;
     else      { g_fail++; printf("  [FAIL] %s (line %d)\n", msg, __LINE__); } \
 } while (0)
 
-/* ---------- 测试参数表（可调参数集中注册，代码内零写死） ---------- */
+/* ---------- 测试参数表（公共纪律：可调参数集中注册，代码内零写死） ---------- */
 typedef struct {
-    float kp;             /**< Mahony 比例增益 */
-    float ki;             /**< Mahony 积分增益 */
-    float dt;             /**< 采样周期，秒 */
-    int   frames;         /**< 收敛喂帧数 */
-    int   norm_every;     /**< |q| 核查间隔，帧（用例 8） */
-    float roundtrip_tol;  /**< 欧拉往返容差，rad（1e-4） */
+    float kp;             /**< Mahony 比例增益（任务规格） */
+    float ki;             /**< Mahony 积分增益（任务规格） */
+    float dt;             /**< 采样周期，秒（任务规格） */
+    int   frames;         /**< 收敛喂帧数（任务规格） */
+    int   norm_every;     /**< |q| 核查间隔，帧（用例 8 规格） */
+    float roundtrip_tol;  /**< 欧拉往返容差，rad（任务规格 1e-4） */
     float identity_tol;   /**< 单位态分量容差 */
-    float quat_norm_tol;  /**< |q|-1 容差（用例 8：1e-4） */
-    float level_deg;      /**< 水平收敛容差，°（1°） */
-    float tilt_lo_deg;    /**< 倾斜收敛下限，°（28°） */
-    float tilt_hi_deg;    /**< 倾斜收敛上限，°（32°） */
+    float quat_norm_tol;  /**< |q|-1 容差（用例 8 规格 1e-4） */
+    float level_deg;      /**< 水平收敛容差，°（任务规格 1°） */
+    float tilt_lo_deg;    /**< 倾斜收敛下限，°（任务规格 28°） */
+    float tilt_hi_deg;    /**< 倾斜收敛上限，°（任务规格 32°） */
     float flat_deg;       /**< 倾斜姿态中非倾斜轴的残余容差，° */
     float perturb_deg[3]; /**< 用例 5b 受扰初值 (roll, pitch, yaw)，° */
 } att_test_cfg_t;
@@ -176,7 +177,7 @@ int main(void)
 
         /* 6a：acc=(0, sin30°, cos30°) = (0, 0.5, 0.866)，模=1。
          * ZYX 约定下这是「绕 X 倾斜 30°」的重力投影 → 倾角收敛于 roll；
-         * 实测该读数不会体现到 pitch（推导见文件头注）。 */
+         * 实测该读数不会体现到 pitch（推导见文件头注，另见任务回报）。 */
         mahony_init(&m, T.kp, T.ki, T.dt);
         imu_sample_t s = still_sample(0.0f, 0.5f, 0.866f);
         feed_frames(&m, &s, T.frames);
@@ -186,7 +187,7 @@ int main(void)
         CHECK(fabsf(p) < DEG2RAD(T.flat_deg), "case6a pitch stays flat");
 
         /* 6b：acc=(-sin30°, 0, cos30°) = (-0.5, 0, 0.866)，模=1——
-         * 「绕 Y 倾斜 30°」→ 倾角收敛于 pitch */
+         * 「绕 Y 倾斜 30°」→ 倾角收敛于 pitch（覆盖任务卡意图的 pitch 断言） */
         mahony_init(&m, T.kp, T.ki, T.dt);
         s = still_sample(-0.5f, 0.0f, 0.866f);
         feed_frames(&m, &s, T.frames);

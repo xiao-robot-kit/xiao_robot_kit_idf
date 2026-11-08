@@ -16,7 +16,7 @@
  */
 
 #include <stdio.h>
-#include "battery.h"
+#include "battery/battery.h"
 
 /* ---------- 极简断言 ---------- */
 static int g_pass = 0, g_fail = 0;

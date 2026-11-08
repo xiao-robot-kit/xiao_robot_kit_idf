@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: MIT */
 /**
  * @file    test_imu.c
- * @brief   IMU 驱动库无硬件单测（mock I2C 总线 + 内存寄存器阵列）
+ * @brief   IMU 驱动库包无硬件单测（mock I2C 总线 + 内存寄存器阵列）
  *
- * @note    自研极简断言（不引第三方测试框架）。
+ * @note    自研极简断言（原创律：不引第三方测试框架）。
  * @note    验证范围：查表正确性 / 寄存器写序列 / 换算 / 生命周期转移。
- *          不覆盖：真实总线时序（需实机验证）。
+ *          不覆盖：真实总线时序（需实机，实验一在板验证）。
  */
 
 #include <stdio.h>
 #include <string.h>
-#include "lsm6ds3.h"
-#include "imu_cfg.h"
+#include "imu/lsm6ds3.h"
+#include "imu/imu_cfg.h"
 
 /* ---------- 极简断言 ---------- */
 static int g_pass = 0, g_fail = 0;

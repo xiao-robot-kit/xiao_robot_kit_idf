@@ -17,7 +17,7 @@
  */
 
 #include <stdio.h>
-#include "imu_heater.h"
+#include "imu_heater/imu_heater.h"
 
 /* ---------- 极简断言 ---------- */
 static int g_pass = 0, g_fail = 0;

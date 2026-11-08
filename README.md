@@ -14,10 +14,13 @@ PWM are injected as function-pointer tables, so the same code runs on
 ESP-IDF, Arduino (see [`xiao_robot_kit_arduino`](https://github.com/xiao-robot-kit/xiao_robot_kit_arduino))
 or bare metal.
 
-**13 runnable board examples** live in [`examples/periph/`](examples/periph) — one
-per on-board peripheral (IMU, button, RGB, battery, two DC motors, encoders, four
-servos, I2C expansion, Grove UART, heater, param store, spare pins). Each is a
-standalone ESP-IDF project.
+**13 board examples** live in [`examples/periph/`](examples/periph) — one per
+on-board peripheral (IMU, button, RGB, battery, two DC motors, encoders, four
+servos, I2C expansion, Grove UART, heater, param store, spare pins); **14 deeper
+experiments** live under [`examples/imu`](examples/imu),
+[`examples/motor`](examples/motor) and [`examples/store_demo`](examples/store_demo)
+(calibration, attitude, closed-loop control, trajectory persistence). Each is a
+standalone ESP-IDF project built against the `xiao_*` libraries in this repo.
 
 ## Design rules
 
@@ -90,8 +93,8 @@ target_link_libraries(app PRIVATE xiao_imu xiao_attitude)   # pick what you use
 ```
 
 ```c
-#include "lsm6ds3.h"     /* flat: each src/<component>/ dir is on its include path */
-#include "mahony.h"
+#include "imu/lsm6ds3.h"   /* headers keep their component prefix */
+#include "att/mahony.h"
 ```
 
 Standalone build with tests:
@@ -109,19 +112,38 @@ xiao_robot_kit_idf/
 ├── CMakeLists.txt          # plain-CMake library mode: all eight xiao_* libs
 ├── LICENSE                 # MIT
 ├── src/
-│   ├── imu/                #   lsm6ds3 driver + preset registry (flat: headers + sources)
-│   ├── attitude/           #   quat + mahony
-│   ├── motor/              #   pwm_timer, pid, scurve, motor + preset registry
-│   ├── pstore/             #   persistence: registry + framing + CRC32
-│   ├── battery/            #   ADC voltage → SOC curve
-│   ├── calibration/        #   IMU bias + temp compensation
-│   ├── imu_heater/         #   heater control state machine
-│   └── proto/              #   serial frame codec (wire-format contract)
+│   ├── imu/                #   lsm6ds3 driver + preset registry
+│   │   ├── include/imu/    #     public headers (include root = include/)
+│   │   └── src/            #     implementation
+│   ├── attitude/           #   quat + mahony            (include/att/,  src/)
+│   ├── motor/              #   pwm_timer, pid, scurve, motor + presets (include/mtr/)
+│   ├── pstore/             #   persistence: registry + framing + CRC32 (include/pstore/)
+│   ├── battery/            #   ADC voltage → SOC curve (include/battery/)
+│   ├── calibration/        #   IMU bias + temp compensation (include/cal/)
+│   ├── imu_heater/         #   heater control state machine (include/imu_heater/)
+│   └── proto/              #   serial frame codec, wire-format contract (include/proto/)
 ├── tests/                  #   per-component unit tests (each defines main())
 └── examples/
     ├── idf/imu_quickstart/ #   ESP-IDF: minimal streaming project
+    ├── _shared/            #   port layer + simulated data sources (shared by all examples)
+    ├── imu/                #   5 staged IMU experiments + their shared command layer
+    │   ├── exp1_raw/       #     raw samples
+    │   ├── exp2_calib/     #     bias calibration + temperature compensation
+    │   ├── exp3_euler/     #     Mahony filter -> Euler angles
+    │   ├── exp4_quat/      #     Mahony filter -> quaternion
+    │   ├── exp5_trajectory/#     attitude + specific-force dual stream
+    │   └── common/         #     calibration command session (single source)
+    ├── motor/              #   8 motor experiments
+    │   ├── exp_motor_qemu/ #     five scenarios behind one selector
+    │   ├── exp_motor_pwm/  #     open-loop duty staircase
+    │   ├── exp_motor_dc/   #     H-bridge direction switching
+    │   ├── exp_motor_servo/#     five-point servo angle calibration
+    │   ├── exp_motor_enc/  #     encoder closed-loop step response
+    │   ├── exp_motor_nested/#    nested timers, channel isolation
+    │   ├── exp_motor_pidscan/#   PID gain grid scan (3x3)
+    │   └── exp_motor_scurve/ #   seven-phase S-curve trajectories
+    ├── store_demo/         #   parameter persistence across power cycles
     └── periph/             #   13 board examples, one per peripheral (P-00 ~ P-12)
-        ├── _shared/        #   port layer + SIM data sources shared by the examples
         ├── P-00_hello_bringup/     toolchain / UART self-check
         ├── P-01_imu_lsm6ds3/       on-board IMU
         ├── P-02_button_k7/         D11 user button
@@ -140,8 +162,10 @@ xiao_robot_kit_idf/
 ## Board examples (P-00 ~ P-12)
 
 Each example is a **standalone ESP-IDF project**; `cd` into one and build it.
-Nothing is shared except `examples/periph/_shared/` (port layer + simulated
-data sources), so an example never depends on another example's build.
+Nothing is shared except `examples/_shared/` (port layer + simulated data
+sources), so an example never depends on another example's build. Every example
+consumes the library targets from the root `CMakeLists.txt` instead of copying
+component sources.
 
 ```bash
 cd examples/periph/P-00_hello_bringup

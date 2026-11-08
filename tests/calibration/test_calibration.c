@@ -7,7 +7,7 @@
  * @note    覆盖（对应任务单 a/b/c/d/e）：
  *          a) 合成静止样本 + 已知零偏 → 标定精度（误差 < 0.1）；
  *          b) 同实例连续两轮标定（不同姿态）→ 第二轮与第一轮一致
- *             （预研仓「start 不清 raw 累加」雷的防回归测试）；
+ *             （旧式实现「start 不清 raw 累加」雷的防回归测试）；
  *          c) 带零偏样本减标定 bias 后残差 < 0.05；
  *          d) 两温度点合成数据 → 温标 → 中间温度补偿误差显著小于不补偿。
  *          e) 残差累加（自动补偿法）：从偏差很大的初值起标，结果是残差而非
@@ -19,9 +19,9 @@
 
 #include <stdio.h>
 #include <math.h>
-#include "imu_types.h"
-#include "imu_calib.h"
-#include "temp_comp.h"
+#include "imu/imu_types.h"
+#include "cal/imu_calib.h"
+#include "cal/temp_comp.h"
 
 /* ---------- 极简断言 ---------- */
 static int g_pass = 0, g_fail = 0;
@@ -136,7 +136,7 @@ int main(void)
     CHECK_EQ(imu_calib_feed(&c, &s, &s), -1, "feed rejected after complete");
 
     /* ============ b. 防回归：同实例第二轮（y 朝上）= 一致 ============
-     * 预研仓雷：start 不清 raw 三轴累加 → 第二轮重力轴判定被上轮 z 轴
+     * 旧式实现雷：start 不清 raw 三轴累加 → 第二轮重力轴判定被上轮 z 轴
      * 残留污染 → ay/az 零偏差约 1g。修后两轮都应回到同一真值。 */
     CHECK_EQ(imu_calib_start(&c), 0, "start round 2 (restart clears all sums)");
     for (int i = 0; i < bcfg->target_n; i++) {

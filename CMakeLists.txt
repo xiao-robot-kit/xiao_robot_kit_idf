@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Top-level CMake build for the XIAO Robot Kit C core libraries.
 #
-# Independent, platform-free C libraries (headers and sources are laid out flat
-# inside each library directory, so a consumer only needs that one directory on
-# its include path):
+# Independent, platform-free C libraries. Every component mirrors the vendored
+# component tree one-to-one:  src/<component>/include/<prefix>/*.h  +  src/<component>/src/*.c
+# The include directory itself is the include root, so headers keep their
+# component prefix at the call site ( #include "mtr/motor.h" ), which is what the
+# firmware examples and the host-side tooling expect too:
 #
 #   xiao_imu       - LSM6DS3TR-C 6-axis IMU driver (I2C bus table + preset registry)
 #   xiao_attitude  - quaternion math + Mahony complementary filter (uses xiao_imu types)
@@ -26,7 +28,7 @@
 #
 # Consumed from a parent build (e.g. ESP-IDF project via add_subdirectory or
 # extra component): link the four targets below; include paths are PUBLIC,
-# e.g.  target_link_libraries(app PRIVATE xiao_motor)  then #include "motor.h".
+# e.g.  target_link_libraries(app PRIVATE xiao_motor)  then #include "mtr/motor.h".
 
 cmake_minimum_required(VERSION 3.13)
 
@@ -41,68 +43,68 @@ option(XIAO_LIBS_BUILD_TESTS "Build the per-library unit tests" ON)
 
 # ---------------------------------------------------------------- xiao_imu
 add_library(xiao_imu STATIC
-    src/imu/lsm6ds3.c
-    src/imu/imu_cfg_presets.c)
+    src/imu/src/lsm6ds3.c
+    src/imu/src/imu_cfg_presets.c)
 target_include_directories(xiao_imu PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/imu>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/imu/include>
     $<INSTALL_INTERFACE:include/imu>)
 target_compile_features(xiao_imu PUBLIC c_std_11)
 
 # ----------------------------------------------------------- xiao_attitude
 add_library(xiao_attitude STATIC
-    src/attitude/quat.c
-    src/attitude/mahony.c)
+    src/attitude/src/quat.c
+    src/attitude/src/mahony.c)
 target_include_directories(xiao_attitude PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/attitude>
-    $<INSTALL_INTERFACE:include/attitude>)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/attitude/include>
+    $<INSTALL_INTERFACE:include/att>)
 target_compile_features(xiao_attitude PUBLIC c_std_11)
 # mahony.h includes imu_types.h from xiao_imu (sample type contract)
 target_link_libraries(xiao_attitude PUBLIC xiao_imu)
 
 # -------------------------------------------------------------- xiao_motor
 add_library(xiao_motor STATIC
-    src/motor/pwm_timer.c
-    src/motor/pid.c
-    src/motor/scurve.c
-    src/motor/motor.c
-    src/motor/motor_cfg_presets.c)
+    src/motor/src/pwm_timer.c
+    src/motor/src/pid.c
+    src/motor/src/scurve.c
+    src/motor/src/motor.c
+    src/motor/src/motor_cfg_presets.c)
 target_include_directories(xiao_motor PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/motor>
-    $<INSTALL_INTERFACE:include/motor>)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/motor/include>
+    $<INSTALL_INTERFACE:include/mtr>)
 target_compile_features(xiao_motor PUBLIC c_std_11)
 
 # ------------------------------------------------------------- xiao_pstore
 add_library(xiao_pstore STATIC
-    src/pstore/pstore.c)
+    src/pstore/src/pstore.c)
 target_include_directories(xiao_pstore PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/pstore>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/pstore/include>
     $<INSTALL_INTERFACE:include/pstore>)
 target_compile_features(xiao_pstore PUBLIC c_std_11)
 
 # ------------------------------------------------------------ xiao_battery
 add_library(xiao_battery STATIC
-    src/battery/battery.c)
+    src/battery/src/battery.c)
 target_include_directories(xiao_battery PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/battery>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/battery/include>
     $<INSTALL_INTERFACE:include/battery>)
 target_compile_features(xiao_battery PUBLIC c_std_11)
 
 # -------------------------------------------------------- xiao_calibration
 add_library(xiao_calibration STATIC
-    src/calibration/imu_calib.c
-    src/calibration/temp_comp.c)
+    src/calibration/src/imu_calib.c
+    src/calibration/src/temp_comp.c)
 target_include_directories(xiao_calibration PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/calibration>
-    $<INSTALL_INTERFACE:include/calibration>)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/include>
+    $<INSTALL_INTERFACE:include/cal>)
 target_compile_features(xiao_calibration PUBLIC c_std_11)
 # imu_calib.h includes imu_types.h from xiao_imu (sample type contract)
 target_link_libraries(xiao_calibration PUBLIC xiao_imu)
 
 # ---------------------------------------------------------- xiao_imu_heater
 add_library(xiao_imu_heater STATIC
-    src/imu_heater/imu_heater.c)
+    src/imu_heater/src/imu_heater.c)
 target_include_directories(xiao_imu_heater PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/imu_heater>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/imu_heater/include>
     $<INSTALL_INTERFACE:include/imu_heater>)
 target_compile_features(xiao_imu_heater PUBLIC c_std_11)
 
@@ -111,9 +113,9 @@ target_compile_features(xiao_imu_heater PUBLIC c_std_11)
 # byte, so this codec is the single source of the wire format (SOF 0xA5,
 # CRC8 poly 0x07 init 0x00 over LEN..PAYLOAD). payload <= PROTO_PAYLOAD_MAX (96).
 add_library(xiao_proto STATIC
-    src/proto/frame.c)
+    src/proto/src/frame.c)
 target_include_directories(xiao_proto PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/proto>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/proto/include>
     $<INSTALL_INTERFACE:include/proto>)
 target_compile_features(xiao_proto PUBLIC c_std_11)
 
@@ -135,39 +137,39 @@ if(XIAO_LIBS_STANDALONE)
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
     install(FILES
-        src/imu/imu_types.h
-        src/imu/imu_cfg.h
-        src/imu/imu_hal_i2c.h
-        src/imu/lsm6ds3.h
+        src/imu/include/imu/imu_types.h
+        src/imu/include/imu/imu_cfg.h
+        src/imu/include/imu/imu_hal_i2c.h
+        src/imu/include/imu/lsm6ds3.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/imu)
     install(FILES
-        src/attitude/quat.h
-        src/attitude/mahony.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/attitude)
+        src/attitude/include/att/quat.h
+        src/attitude/include/att/mahony.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/att)
     install(FILES
-        src/motor/motor_types.h
-        src/motor/motor.h
-        src/motor/motor_hal.h
-        src/motor/pwm_timer.h
-        src/motor/pwm_hal.h
-        src/motor/pid.h
-        src/motor/scurve.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/motor)
+        src/motor/include/mtr/motor_types.h
+        src/motor/include/mtr/motor.h
+        src/motor/include/mtr/motor_hal.h
+        src/motor/include/mtr/pwm_timer.h
+        src/motor/include/mtr/pwm_hal.h
+        src/motor/include/mtr/pid.h
+        src/motor/include/mtr/scurve.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/mtr)
     install(FILES
-        src/pstore/pstore.h
+        src/pstore/include/pstore/pstore.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pstore)
     install(FILES
-        src/battery/battery.h
+        src/battery/include/battery/battery.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/battery)
     install(FILES
-        src/calibration/imu_calib.h
-        src/calibration/temp_comp.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/calibration)
+        src/calibration/include/cal/imu_calib.h
+        src/calibration/include/cal/temp_comp.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cal)
     install(FILES
-        src/imu_heater/imu_heater.h
+        src/imu_heater/include/imu_heater/imu_heater.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/imu_heater)
     install(FILES
-        src/proto/frame.h
+        src/proto/include/proto/frame.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/proto)
 
     set(XIAO_LIBS_INSTALL_CMAKEDIR ${CMAKE_INSTALL_LIBDIR}/cmake/xiao-libs)

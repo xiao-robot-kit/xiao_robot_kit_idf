@@ -1,8 +1,14 @@
 # SPDX-License-Identifier: MIT
 # Build artifacts only - sources are all tracked.
+# sdkconfig is generated from sdkconfig.defaults by idf.py; never track it.
 build/
 build-qemu/
 managed_components/
+sdkconfig
 sdkconfig.old
 *.exe
 __pycache__/
+
+# 本机构建日志 / throwaway 验证脚本
+*.log
+_verify_*.bat

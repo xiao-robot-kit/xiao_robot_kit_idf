@@ -3,26 +3,28 @@
  * @file    test_pstore.c
  * @brief   参数持久化组件无硬件单测（RAM 后端介质 + 两阶段原子性防回归 + 断电保持模拟）
  *
- * @note    自研极简断言（不引第三方测试框架），风格对齐 test_imu.c。
+ * @note    自研极简断言（原创律：不引第三方测试框架），
+ *          风格对齐 components/imu/tests/test_imu.c。
  * @note    验证范围：
- *          ① CRC32 标准向量 / ② create 与注册面参数校验（含
- *          FULL/DUP/NOTFOUND/NOFIT 的真实路径）/ ③ 序列化→load 往返字节一致 /
- *          ④【防回归】坏 CRC、坏 count、CORRUPT 中途（第 i 条目越界）、
+ *          ① CRC32 标准向量 / ② create 与注册面参数校验（含死码清零的
+ *          FULL/DUP/NOTFOUND/NOFIT 真实路径）/ ③ 序列化→load 往返字节一致 /
+ *          ④【防回归·雷1】坏 CRC、坏 count、CORRUPT 中途（第 i 条目越界）、
  *          伪一致 count、伪一致 data_len 五种失败下 ram 零字节改动 /
- *          ⑤ count 篡改被 CRC 捕获 + CRC 伪造一致时对齐断言兜底 /
+ *          ⑤【雷3】count 篡改被 CRC 捕获 + CRC 伪造一致时对齐断言兜底 /
  *          ⑥ 增删条目后重写 / ⑦ 脏检查写计数（不脏零后端调用）/
  *          ⑧ 断电保持模拟 1000 循环零失真。
- *          不覆盖：真实 flash 介质行为与 QEMU 级断电重启（留后续）。
+ *          不覆盖：真实 flash 介质行为与 QEMU 级断电重启（登记留后续，
+ *          见组件 README「未验证边界」）。
  * @note    「CRC 一致但结构损坏」帧的构造法：篡改帧字段后，用公开的
  *          pstore_crc32 对（count+data_len 头两字段 || 数据区）重算 CRC 回填
  *          ——这是到达 pstore_load 解析阶段的唯一测试途径（CRC 先于解析），
- *          亦是两阶段原子性防回归的关键构造。
+ *          亦是雷1 防回归的关键构造。
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "pstore.h"
+#include "pstore/pstore.h"
 
 /* ---------- 极简断言（对齐 test_imu.c） ---------- */
 static int g_pass = 0, g_fail = 0;
@@ -31,12 +33,12 @@ static int g_pass = 0, g_fail = 0;
     else      { g_fail++; printf("  [FAIL] %s (line %d)\n", msg, __LINE__); } \
 } while (0)
 
-/* ---------- 测试参数表（可调参数集中注册，代码内零写死） ---------- */
+/* ---------- 测试参数表（公共纪律：可调参数集中注册，代码内零写死） ---------- */
 typedef struct {
     uint32_t capacity;        /**< 介质容量，字节（create 传入语义） */
     uint32_t max_items;       /**< 注册表上限 */
     uint32_t magic;           /**< 应用魔数 */
-    uint32_t power_cycles;    /**< 断电保持循环数（1000） */
+    uint32_t power_cycles;    /**< 断电保持循环数（任务卡 1000） */
     uint32_t lcg_seed;        /**< 确定性 LCG 种子（跨平台可复现） */
     uint32_t tiny_capacity;   /**< NOFIT 用小容量（装不下任何条目） */
     uint32_t tiny_max_items;  /**< FULL 用小注册表 */
@@ -51,10 +53,10 @@ static const pst_test_cfg_t T = {
     .max_items       = 8,
     .magic           = 0x58535243u,   /* "XSRC"：XIAO Storage Resource Contract */
     .power_cycles    = 1000,
-    .lcg_seed        = 0x20261105u,   /* 确定性种子 */
+    .lcg_seed        = 0x20261105u,   /* 本施工日 */
     .tiny_capacity   = 24,            /* 仅容 header+1 个微条目，容不下 4 条目帧 */
     .tiny_max_items  = 2,
-    .corrupt_item    = 2,             /* 第 0/1 条已可匹配 → 旧式非原子实现此刻已污染 ram */
+    .corrupt_item    = 2,             /* 第 0/1 条已可匹配 → 旧实现此刻已污染 ram */
     .scramble_byte   = 0xC3,
     .big_len         = 0x10000u,
     .big_klen        = 0x10001u,
@@ -157,7 +159,7 @@ static int ok_erase(void *ctx, size_t len) {
     return 0;
 }
 
-/* ---------- 防回归夹具：哨兵填充与零改动校验 ---------- */
+/* ---------- 雷防回归夹具：哨兵填充与零改动校验 ---------- */
 
 /** 四条目 ram 全填哨兵字节（失败注入前的初始态） */
 static void fill_sentinel(params_t *p) {
@@ -215,7 +217,7 @@ int main(void) {
         pstore_destroy(NULL);   /* 幂等路径 */
     }
 
-    /* ═══ 3. 注册面校验（ARG/FULL/DUP/NOTFOUND 的真实路径） ═══ */
+    /* ═══ 3. 注册面校验（ARG/FULL/DUP/NOTFOUND：死码清零后的真实路径） ═══ */
     {
         pstore_t *ps = pstore_create(&(pstore_cfg_t){
             .backend = &be, .capacity = T.capacity,
@@ -308,9 +310,9 @@ int main(void) {
         pstore_destroy(r);
     }
 
-    /* ═══ 5.【防回归】五种失败注入下 ram 零字节改动 ═══
+    /* ═══ 5.【防回归·雷1+雷3】五种失败注入下 ram 零字节改动 ═══
      * 公共构造：写好合法帧 → 哨兵 ram → 篡改帧（必要时 fix_crc）→ load 必须报错
-     * 且哨兵完好。防回归目标：解析中途 CORRUPT 返回时，前序条目不得被 memcpy。 */
+     * 且哨兵完好。旧实现的雷：解析中途 CORRUPT 返回时前序条目已被 memcpy。 */
     {
         params_t saved, probe;
         pstore_t *w = NULL, *r = NULL;
@@ -340,7 +342,7 @@ int main(void) {
         }
 
         /* 5b. 坏 count：仅改 count 字段（不修 CRC）→ 被 CRC 捕获 → ERR_CHECKSUM
-         *     （第一层：count 已入 CRC 覆盖范围） */
+         *     （雷3 第一层：count 已入 CRC 覆盖范围） */
         {
             uint8_t keep[T.capacity];
             uint32_t c;
@@ -356,7 +358,7 @@ int main(void) {
 
         /* 5c. CORRUPT 中途：第 corrupt_item 条目 dlen 改 0xFFFF + CRC 伪造成一致
          *     → 解析推进到该条目才撞边界 → ERR_CORRUPT；此刻前 corrupt_item 条
-         *     已可匹配——非原子实现此刻已污染 ram，本版必须零改动（两阶段原子核心） */
+         *     已可匹配——旧实现已污染 ram，本版必须零改动（雷1 核心防回归） */
         {
             uint8_t keep[T.capacity];
             uint32_t dlen_off = item_dlen_off(mem, T.corrupt_item);
@@ -372,7 +374,7 @@ int main(void) {
         }
 
         /* 5d. 伪一致 count：count+1 且 CRC 修一致 → 解析多吃一条越界 → ERR_CORRUPT
-         *     （兜底层：CRC 被伪造一致时对齐断言拒绝） */
+         *     （雷3 兜底层：CRC 被伪造一致时对齐断言拒绝） */
         {
             uint8_t keep[T.capacity];
             uint32_t c;
@@ -553,7 +555,7 @@ int main(void) {
         pstore_destroy(ps);
     }
 
-    /* ═══ 8. 断电保持模拟：写→后端快照→改 ram→load(快照)→还原，
+    /* ═══ 8. 断电保持模拟（任务卡实验）：写→后端快照→改 ram→load(快照)→还原，
      *        1000 循环零失真。断电语义 = 实例销毁重建（pstore 态全失）+
      *        ram 打垃圾 + 介质仅存快照字节。 ═══ */
     {

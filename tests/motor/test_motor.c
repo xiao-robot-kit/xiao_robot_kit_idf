@@ -3,27 +3,27 @@
  * @file    test_motor.c
  * @brief   电机实例核心无硬件单测（mock 平台层：pwm_hal + 编码器 HAL + 合成对象）
  *
- * @note    pwm_timer.c 为真实链接件——本文件**不**mock 它；
- *          mock 的是平台层两条缝：pwm_hal_t（PWM 平台表，启动期注册）与
+ * @note    pwm_timer.c（并行任务已交付）为真实链接件——本文件**不**mock 它；
+ *          mock 的是 port 层两缝：pwm_hal_t（PWM 平台表，启动期注册）与
  *          motor_hal_t（编码器表，实例 attach）。与 test_pwm_timer.c 同构分层。
- * @note    自研极简断言（不引第三方测试框架，风格对齐 test_imu.c）。
+ * @note    自研极简断言（原创律：不引第三方测试框架，风格对齐 test_imu.c）。
  * @note    验证范围：create 全参数校验逐项拒 / 四类 kind 分派换算数值断言
  *          （PWM 钳位、SERVO 角线性、DC 方向桥双通道）/ ENC 合成编码器
  *          （恒速注入测量 + 一阶对象闭环收敛 ±5%）/ 时基回退拒 / HAL
  *          挂载校验与故障位 / 生命周期（destroy 停输出还通道）/ 多电机
  *          共定时器分通道互不干扰 / 预设表。
- *          不覆盖：真实 LEDC/PCNT 时序（需实机验证）；S 梯度轨迹由
- *          test_scurve.c 单测覆盖。
+ *          不覆盖：真实 LEDC/PCNT 时序与 S 梯度轨迹（scurve 库并行任务
+ *          交付后另行挂接——见 motor.c 文件头注）。
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 
-#include "motor.h"
-#include "motor_hal.h"
-#include "pwm_timer.h"
-#include "pwm_hal.h"
+#include "mtr/motor.h"
+#include "mtr/motor_hal.h"
+#include "mtr/pwm_timer.h"
+#include "mtr/pwm_hal.h"
 
 /* ---------- 极简断言 ---------- */
 static int g_pass = 0, g_fail = 0;
@@ -642,7 +642,7 @@ int main(void)
         CHECK_EQ(pwm_timer_destroy(t2), 0, "reuse cleanup");
     }
 
-    /* ---- 10. 多电机共定时器：同句柄不同通道，互不干扰（实例化设计） ---- */
+    /* ---- 10. 多电机共定时器：同句柄不同通道，互不干扰（实例化铁律） ---- */
     {
         pwm_timer_t *t = mk_timer(20000u, 4u);   /* idx 12 */
         motor_cfg_t c = *motor_cfg_find("motor.pwm.generic");
