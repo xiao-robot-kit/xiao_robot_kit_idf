@@ -13,7 +13,7 @@
  * Default wiring: XIAO ESP32-S3 (SDA = GPIO5, SCL = GPIO6, I2C0).
  */
 
-#include "imu_hal_i2c.h"
+#include "imu/imu_hal_i2c.h"
 
 /**
  * @brief  Install the I2C master bus and attach the IMU device

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /**
  * @file    p02_button_main.c
  * @brief   P-02：D11 (GPIO11) 按键 —— 软件消抖 + 短按/长按事件

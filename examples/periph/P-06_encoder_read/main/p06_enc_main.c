@@ -4,7 +4,7 @@
  * @brief   P-06 编码器计数例程（N20 @ motor.enc.n20，cpr=7200）
  *
  * 链路：motor 组件（motor.enc.n20 @ pwm.motor.20k）+ 合成编码器 HAL/plant
- *       （port/esp_idf/motor_hal_sim.c，QEMU 无 PCNT/编码器模型）
+ *       （examples/_shared/motor_hal_sim.c，QEMU 无 PCNT/编码器模型）
  *       → 文本遥测 → UART0（EXP_QEMU_UART=1，QEMU 档）/ USB-Serial-JTAG（真板档）。
  *
  * 演示两段（有限序列，事件回放每 1s 重放全量切换过程；P-02 模式）：
@@ -36,8 +36,8 @@
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
 
-#include "motor.h"
-#include "pwm_hal.h"
+#include "mtr/motor.h"
+#include "mtr/pwm_hal.h"
 #include "motor_hal_sim.h"
 
 /* ---- 双宏编译契约（未定义即拒绝；本文件不静默退化为任一态） ---- */

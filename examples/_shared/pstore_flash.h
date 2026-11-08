@@ -22,7 +22,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "esp_partition.h"
-#include "pstore.h"
+#include "pstore/pstore.h"
 
 /** @brief flash 分区后端实例（ctx = 本结构） */
 typedef struct {

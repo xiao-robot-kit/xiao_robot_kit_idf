@@ -7,7 +7,7 @@
 #   - _shared/motor_hal_sim.c  synthetic PWM HAL (QEMU: no LEDC model)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../_shared)
+set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
 # P_SIM_MOTOR (1 = synthetic HAL, QEMU-testable; 0 = real HW LEDC HAL - not
 # provided, rejected by #error in C): real-board output needs LEDC timers

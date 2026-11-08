@@ -4,7 +4,8 @@
 # Pulls the C core library from the repository root (three levels up) through
 # its library-mode CMakeLists. The non-standalone branch there skips
 # install/export/tests, so only the four static libraries are built.
-# xiao_imu carries its own PUBLIC include path (src/imu, flat layout).
+# xiao_imu carries its own PUBLIC include path (src/imu/include, so headers
+# are included with their component prefix: #include "imu/lsm6ds3.h").
 
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 

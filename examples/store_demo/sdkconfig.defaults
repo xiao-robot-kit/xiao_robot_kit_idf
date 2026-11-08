@@ -1,0 +1,6 @@
+# XIAO ESP32-S3 + USB-Serial-JTAG 控制台（上位机经 USB 直连，同 exp1）
+# 自定义分区表：默认 singleapp + 追加 data 分区「store」（pstore flash 后端介质）
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

@@ -7,7 +7,7 @@
 #   - _shared/pstore_flash.c  raw partition media backend (ESP partition API)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../_shared)
+set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
 # EXP_QEMU_UART: 1 = output on UART0 (QEMU chardev path); 0 (default) = USB-Serial-JTAG
 if(NOT DEFINED EXP_QEMU_UART)

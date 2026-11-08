@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /**
  * @file    hello_bringup_main.c
  * @brief   P-00：工程脚手架 + USB 串口日志

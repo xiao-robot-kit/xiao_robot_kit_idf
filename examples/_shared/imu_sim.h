@@ -3,7 +3,7 @@
 #define IMU_SIM_H
 
 #include <stdint.h>
-#include "imu_types.h"
+#include "imu/imu_types.h"
 
 /**
  * @file    imu_sim.h

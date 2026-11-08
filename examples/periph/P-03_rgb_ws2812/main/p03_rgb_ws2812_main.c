@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /**
  * @file    p03_rgb_ws2812_main.c
  * @brief   P-03：D13 → J7 外接 WS2812 灯带 —— RMT 驱动 + 自研 HSV 色轮

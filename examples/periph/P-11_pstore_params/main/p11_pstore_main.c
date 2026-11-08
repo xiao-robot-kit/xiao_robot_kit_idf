@@ -5,7 +5,7 @@
  *
  * 硬件约束（任务书 §4）：
  *  - 本例程零外设依赖（纯存储演示）：介质 = flash 自定义 data 分区「store」
- *    （port/esp_idf/pstore_flash.c，T-006 先例，QEMU 断电重启实验同款）；
+ *    （examples/_shared/pstore_flash.c，T-006 先例，QEMU 断电重启实验同款）；
  *  - 参数语义锚任务书：motor.cal（电机校准，占空比-转速标定参数）与
  *    servo.center（舵机中位脉冲宽），都直接由 pstore 组件序列化落盘。
  *
@@ -17,7 +17,7 @@
  * 输出层：EXP_QEMU_UART=1 → UART0（QEMU chardev 出口）；0（默认）→ USB-Serial-JTAG。
  * 串口参数：115200 8N1。
  *
- * pstore 组件（xiao_pstore）：单帧多条目（CRC32 覆盖 count+data），
+ * pstore 组件（vendor/xiao 组件库）：单帧多条目（CRC32 覆盖 count+data），
  * 两阶段原子（load 先校验整帧再复制），介质操作由 port 层 flash 后端承接。
  */
 
@@ -31,7 +31,7 @@
 #else
 #include "driver/usb_serial_jtag.h"
 #endif
-#include "pstore.h"
+#include "pstore/pstore.h"
 #include "pstore_flash.h"       /* port/esp_idf：flash 裸分区后端（介质） */
 
 #define APP_NAME       "P-11_pstore_params"

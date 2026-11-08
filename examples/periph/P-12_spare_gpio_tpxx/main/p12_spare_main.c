@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /**
  * @file    p12_spare_main.c
  * @brief   P-12 备用 GPIO（TP20=MTDI/GPIO41、TP21=MTDO/GPIO42）例程

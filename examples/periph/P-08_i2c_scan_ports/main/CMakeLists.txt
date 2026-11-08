@@ -4,7 +4,7 @@
 # Shared wiring (public-repo layout):
 #   - _shared/port_i2c.h + imu_hal_i2c.c  I2C platform endpoint (real mode
 #     P_SIM_SCAN=0); SIM mode is a zero-I2C synthetic echo
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../_shared)
+set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
 # P_SIM_SCAN: 1 (default) = synthetic scan echo (zero I2C deps, QEMU-testable,
 #              dev=0x6A sim echo + NEW 0x40); 0 = real I2C scan via _shared

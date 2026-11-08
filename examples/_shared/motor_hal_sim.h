@@ -23,9 +23,9 @@
  */
 
 #include <stdint.h>
-#include "pwm_hal.h"
-#include "motor_hal.h"
-#include "pwm_timer.h"
+#include "mtr/pwm_hal.h"
+#include "mtr/motor_hal.h"
+#include "mtr/pwm_timer.h"
 
 /**
  * @brief   合成编码器 plant 配置（注册进 sim 编码器 HAL 的「表」）

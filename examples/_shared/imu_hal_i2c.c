@@ -6,7 +6,7 @@
 
 #include <stddef.h>
 #include "driver/i2c_master.h"
-#include "port_i2c.h"       /* 本目录；类型契约来自 公开仓 xiao_imu 库包 imu_hal_i2c.h */
+#include "port_i2c.h"       /* 本目录；类型契约来自 vendor 库包 imu/imu_hal_i2c.h */
 
 /* 板级固定（XIAO Robot Board 实机引脚） */
 #define PORT_I2C_SDA  5

@@ -33,7 +33,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-#include "imu_types.h"
+#include "imu/imu_types.h"
 #if EXP_QEMU_UART
 #include "driver/uart.h"
 #else
@@ -42,8 +42,8 @@
 #if P_SIM_IMU
 #include "imu_sim.h"          /* testing/imu_sim：合成源（跨实验共享单源，只读） */
 #else
-#include "lsm6ds3.h"      /* 公开库驱动：xiao_imu（flat include） */
-#include "imu_cfg.h"
+#include "imu/lsm6ds3.h"      /* vendor xiao 组件库：驱动 v0.1.0+ pin（MEM-4 只读） */
+#include "imu/imu_cfg.h"
 #include "port_i2c.h"         /* port/esp_idf：I2C 平台端点（唯一 esp 头出现处） */
 #endif
 
@@ -55,7 +55,7 @@
 #define APP_TX_TIMEOUT_MS 100
 
 /* 真传感器预设（参数零写死：速率/量程/I2C 速度全来自注册表） */
-#define APP_CFG_PRESET "imu.exp1.raw"      /* 104Hz ODR + 400kHz 总线 + 10ms 节拍 */
+#define APP_CFG_PRESET "imu.raw.104"      /* 104Hz ODR + 400kHz 总线 + 10ms 节拍 */
 #define APP_SIM_PRESET "sim.exp2.static"   /* 合成源：100Hz 静止真值 + 注入已知零偏 */
 
 enum {

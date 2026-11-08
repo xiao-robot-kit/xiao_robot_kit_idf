@@ -1,0 +1,10 @@
+# Name,   Type, SubType, Offset,   Size,    Flags
+# 2MB flash：默认 singleapp 布局 + 自定义 data 分区「store」（pstore flash 后端介质）
+# 分区偏移显式锚定（与 QEMU 镜像 prepare 的 flash_args 一致，防布局漂移）：
+#   nvs/phy_init 与出厂表一致；factory app 1M；store 64KB 跟在 app 后，
+#   容量远大于 pstore 帧（4096B 上限），留磨损均衡/多槽升级余地。
+#   store subtype 0x40 = ESP_PARTITION_SUBTYPE_DATA_UNDEFINED 自定义（app 专用）。
+nvs,      data, nvs,     0x9000,   0x6000,
+phy_init, data, phy,     0xf000,   0x1000,
+factory,  app,  factory, 0x10000,  0x100000,
+store,    data, 0x40,    0x110000, 0x20000,

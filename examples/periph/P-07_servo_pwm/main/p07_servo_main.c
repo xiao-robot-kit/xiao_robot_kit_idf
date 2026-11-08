@@ -5,7 +5,7 @@
  *
  * 链路：motor 组件（motor.servo.sg90 @ pwm.servo.50，底版 500~2500us/0~180°）
  *       × 4 路（单定时器 4 通道，SERVO 单臂占 1 通道）→ 合成 PWM 存储回读
- *       （port/esp_idf/motor_hal_sim.c）→ 文本遥测 → UART0（QEMU 档）/
+ *       （examples/_shared/motor_hal_sim.c）→ 文本遥测 → UART0（QEMU 档）/
  *       USB-Serial-JTAG（真板档）。
  *
  * 演示两件事（有限序列，事件回放每 1s 重放全量；P-02 模式）：
@@ -42,8 +42,8 @@
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
 
-#include "motor.h"
-#include "pwm_hal.h"
+#include "mtr/motor.h"
+#include "mtr/pwm_hal.h"
 #include "motor_hal_sim.h"
 
 /* ---- 双宏编译契约（未定义即拒绝；本文件不静默退化为任一态） ---- */

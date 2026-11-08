@@ -6,7 +6,7 @@
 #   - _shared/motor_hal_sim.c  synthetic PWM/PCNT HAL (QEMU: no LEDC/PCNT model)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../_shared)
+set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
 # P_SIM_MOTOR (1 = synthetic HAL, QEMU-testable; 0 = real HW LEDC HAL - not
 # provided, rejected by #error in C): motor.enc.n20 real-board output needs

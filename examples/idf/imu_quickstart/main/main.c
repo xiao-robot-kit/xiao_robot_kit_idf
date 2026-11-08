@@ -10,8 +10,8 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "lsm6ds3.h"
-#include "imu_cfg.h"
+#include "imu/lsm6ds3.h"
+#include "imu/imu_cfg.h"
 #include "bus_i2c_idf.h"
 
 void app_main(void)

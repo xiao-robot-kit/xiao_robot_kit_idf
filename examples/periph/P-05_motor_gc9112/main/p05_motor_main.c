@@ -27,7 +27,7 @@
 #include "freertos/task.h"
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
-#include "motor.h"
+#include "mtr/motor.h"
 #include "motor_hal_sim.h"
 
 #if !P_SIM_MOTOR

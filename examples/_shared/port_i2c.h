@@ -2,7 +2,7 @@
 #ifndef ESP_PORT_I2C_H
 #define ESP_PORT_I2C_H
 
-#include "imu_hal_i2c.h"
+#include "imu/imu_hal_i2c.h"
 
 /**
  * @file    port_i2c.h（port/esp_idf）

@@ -38,8 +38,8 @@
 #else
 #include "driver/usb_serial_jtag.h"
 #endif
-#include "imu_heater.h"     /* 控制层：滞回恒温状态机（纯算法） */
-#include "temp_comp.h"             /* 温补对接：温漂补偿应用 */
+#include "imu_heater/imu_heater.h"     /* 控制层：滞回恒温状态机（纯算法） */
+#include "cal/temp_comp.h"             /* 温补对接：温漂补偿应用 */
 
 #if !P_SIM_HEAT
 #error "P-10: 真加热 PWM HAL 未提供（LEDC 端点待 T-017 承接）；QEMU 档必须 P_SIM_HEAT=1"

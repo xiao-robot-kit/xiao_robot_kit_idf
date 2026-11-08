@@ -8,7 +8,7 @@
 #   - _shared/imu_hal_i2c.c    real I2C platform endpoint (P_SIM_IMU=0)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../_shared)
+set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
 # P_SIM_IMU: 1 (default) = synthetic IMU data (zero I2C deps, QEMU-testable,
 #              WHO/SCAN are synthesized echoes)

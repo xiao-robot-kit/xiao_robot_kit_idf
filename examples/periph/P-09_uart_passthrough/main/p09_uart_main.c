@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /**
  * @file    p09_uart_passthrough_main.c
  * @brief   P-09：UART 环回/透传演示（J10 Grove UART, UART0, 115200 8N1）
