@@ -33,7 +33,7 @@
 |---|---|---|
 | default 档构建 | `run.bat` | ✅ bin 167,888 B（2026-11-07 实测） |
 | QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_UART=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 188,720 B（2026-11-07 实测） |
-| QEMU 断言 | `run_qemu_tcp_hello.sh build-qemu hello_check.py 5559 40 'OK boot P-09_uart_passthrough' 'UART loop 115200 8N1' 'LOOP n=1 tx=1000 rx=1000 loss=0 crc=OK' 'LOOP n=10 tx=1000 rx=1000 loss=0 crc=OK' 'P09 DONE rounds=10' 'VERDICT PASS'` | ✅ 6/6 PASS（2026-11-07 实测；首跑 4/6 = sw_loop 校验侧 seed 未推进 bug，修复后全绿） |
+| QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
 ## 五、组件对接（P-09 → Base_Library）
 

@@ -54,17 +54,13 @@ SPARE done mismatch=(0,0) -> VERDICT PASS
 
 完成后每 1s 全量重放（REPLAY_MAX 16 行，含 done/verdict，晚连探针可见）。
 
-## 验证（QEMU 2026-11-08）
+## 验证
 
-`run_qemu.bat` 或：
-```
-bash testing/qemu/run_qemu_tcp_hello.sh examples/periph/P-12_spare_gpio_tpxx/build-qemu \
-  examples/periph/P-00_hello_bringup/testing/hello_check.py 5562 20 \
-  'OK boot P-12_spare_gpio_tpxx' 'SPARE role1' 'SPARE role2' 'SPARE done' 'VERDICT PASS'
-```
+公开仓形态：`run_qemu.bat` 只构建 SIM 变体（`-DP_SIM_SPARE=1 -DEXP_QEMU_UART=1`），
+用于确认例程能在公开仓自包含构建通过。
 
-结果：**5/5 全部命中，check exit=0（ALL OK）**；构建 default/QEMU 两档 EXIT=0。
-真板路径（`P_SIM_SPARE=0`）待真板 + TP20↔TP21 飞线实测（无真板环境）。
+QEMU 引导 + UART0 文本断言（`5/5 命中`）属于本项目内部 CI 流程，公开仓不附带 runner 与断言脚本。
+真板路径（`P_SIM_SPARE=0`）待真板 + TP20/TP21 飞线实测（当前无真板环境）。
 
 ## 依赖声明（Dependencies）
 
