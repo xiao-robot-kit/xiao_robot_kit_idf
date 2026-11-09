@@ -10,7 +10,7 @@
 
 ## 二、帧与参数
 
-- `0x05` MOTOR：单实例 = 1×16 B 记录；布局单源 `src/proto/frame.h`。
+- `0x05` MOTOR：单实例 = 1×16 B 记录；布局单源 `src/proto/include/proto/frame.h`。
 - 参数单源：实验表 `main/exp_motor_servo_scen.c`（角度点 / 保持拍数 / wiring）；
   舵机定时器 = 50 Hz 预设（与电机的 20 kHz 定时器相互独立）。
 

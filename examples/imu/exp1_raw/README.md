@@ -14,7 +14,7 @@
 
 ## 三、帧与参数
 
-- 帧布局单源：`src/proto/frame.h`（`PROTO_TYPE_IMU_SAMPLE = 0x01`）。
+- 帧布局单源：`src/proto/include/proto/frame.h`（`PROTO_TYPE_IMU_SAMPLE = 0x01`）。
 - 采样率 / 量程零写死：全部来自 `xiao_imu` 预设 `imu.raw.104`。
 - 帧出口：真板档 USB-Serial-JTAG；`EXP_QEMU_UART=1` 时改为 UART0。
 

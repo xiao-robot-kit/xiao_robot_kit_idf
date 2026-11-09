@@ -13,7 +13,7 @@
 ## 二、帧与参数
 
 - `0x05` MOTOR：单实例 = 1×16 B 记录，`duty` 为带符号域 −1~+1；布局单源
-  `src/proto/frame.h`。
+  `src/proto/include/proto/frame.h`。
 - 参数单源：实验表 `main/exp_motor_dc_scen.c`（步表 / 保持拍数 / wiring）；
   电机与定时器底版来自 `xiao_motor` 预设（`motor.dc.generic` @ `pwm.motor.20k`，
   桥对 ch0/ch1、pin 11/12）。

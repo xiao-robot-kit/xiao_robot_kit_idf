@@ -20,7 +20,7 @@ TEXT（`0x7F`）逐字契约：`OK calib start N=<n>` / `OK calib progress <n>/<
 ## 三、帧与参数
 
 - `0x02` IMU_CAL：每次标定完成连发 3 帧，负载 19×float32 LE，块序
-  `raw6 | deb6 | bias6 | temp`；布局单源 `src/proto/frame.h`。
+  `raw6 | deb6 | bias6 | temp`；布局单源 `src/proto/include/proto/frame.h`。
 - 参数单源：`xiao_imu` 预设 `imu.attitude.208`、`xiao_calibration` 预设
   `cal.exp2.bias`、温补系数表见 `main/`（零写死）。
 - 持久化：`xiao_pstore` + `examples/_shared/pstore_nvs.c`（NVS 介质后端）。

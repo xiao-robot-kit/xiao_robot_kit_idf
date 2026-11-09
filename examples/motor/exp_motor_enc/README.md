@@ -10,7 +10,7 @@
 
 ## 二、帧与参数
 
-- `0x05` MOTOR：单实例 = 1×16 B 记录；布局单源 `src/proto/frame.h`。
+- `0x05` MOTOR：单实例 = 1×16 B 记录；布局单源 `src/proto/include/proto/frame.h`。
 - 参数单源：实验表 `main/exp_motor_enc_scen.c`；闭环底版 = `xiao_motor` 预设
   `motor.enc.n20`（cpr = 7200）。
 - 合成 HAL：`examples/_shared/motor_hal_sim.c`（编码器测量也由该 HAL 提供）。

@@ -14,7 +14,7 @@
 ## 二、帧与参数
 
 - `0x05` MOTOR：双槽 ×16 B 记录（槽 0 = PWM_OPEN，槽 1 = ENC_CLOSED）；布局单源
-  `src/proto/frame.h`。
+  `src/proto/include/proto/frame.h`。
 - 参数单源：轨迹点 / 时限 / 前馈系数 = `main/exp_motor_scurve_scen.c`；
   scurve 规划参数由 `xiao_motor` 组件提供。
 

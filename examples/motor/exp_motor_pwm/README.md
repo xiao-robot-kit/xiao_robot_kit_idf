@@ -9,7 +9,7 @@
 
 ## 二、帧与参数
 
-- `0x05` MOTOR：单实例 = 1×16 B 记录；布局单源 `src/proto/frame.h`。
+- `0x05` MOTOR：单实例 = 1×16 B 记录；布局单源 `src/proto/include/proto/frame.h`。
 - 参数单源：实验表 `main/exp_motor_pwm_scen.c`（阶表 / 保持拍数 / wiring）；
   定时器底版 = `xiao_motor` 预设 `pwm.motor.20k`。
 

@@ -34,7 +34,7 @@
 
 > 真板验证项（待 T-017）：M1 手转方向与计数极性、手转 1 圈 = 7200 计数、DRIVE ±120° 到位误差、与 P-05 曲线 RPM 对照。
 
-## 五、组件对接说明（对后续 P-08~P-13 的契约）
+## 五、组件对接说明（对后续 P-08~P-12 的契约）
 
 - P-08 i2c_scan_ports：编码器计数外设是 6 路 GPIO 边沿中断（无 I2C），此例程已演示「合成 HAL 挂 motor 组件」；P-08 的 I2C 扫描走 imu 组件同款 `i2c_master` 总线索，编码器不参与。
 - 闭环拓扑（P-05→P-06 已打通）：`preset → timer → motor(pwm 桥对) → attach_encoder(sim) → register_plant(plant 合并到 enc HAL) → set_target → poll`——P-07 舵机无编码器，闭环面留空，只有 PWM 输出面。

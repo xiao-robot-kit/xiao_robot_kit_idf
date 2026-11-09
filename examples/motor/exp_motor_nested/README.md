@@ -10,7 +10,7 @@
 
 ## 二、帧与参数
 
-- `0x05` MOTOR：3 槽 ×16 B 记录（槽序 = A / B / C）；布局单源 `src/proto/frame.h`。
+- `0x05` MOTOR：3 槽 ×16 B 记录（槽序 = A / B / C）；布局单源 `src/proto/include/proto/frame.h`。
 - 参数单源：实验表 `main/exp_motor_nested_scen.c`；A/B 走 `pwm.motor.20k`，
   C 走舵机 50 Hz 预设。
 
