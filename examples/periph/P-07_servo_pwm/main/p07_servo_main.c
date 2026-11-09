@@ -41,6 +41,7 @@
 #include "mtr/motor.h"
 #include "mtr/pwm_hal.h"
 #include "motor_hal_sim.h"
+#include "port.h"             /* port/esp_idf：board_init 隐函数 */
 
 /* ---- 双宏编译契约（未定义即拒绝；本文件不静默退化为任一态） ---- */
 #ifndef P_SIM_MOTOR
@@ -74,7 +75,7 @@ static const float s_angle_table[ANGLE_TABLE_N] = { 0.0f, 90.0f, 180.0f, 90.0f, 
 
 #define EXP_UART_NUM         UART_NUM_0
 
-/* ---- 引脚表（任务书 §3.1：D15/D9/D0/D8 = S1~S4） ---- */
+/* ---- 引脚表（board_init 唯一事实源；任务书 §3.1：D15/D9/D0/D8 = S1~S4） ---- */
 static const int s_pins[SERVO_N] = { 15, 9, 0, 8 };
 
 /* ---- 运行状态 ---- */
@@ -259,6 +260,37 @@ static void app_loop(void *arg)
     }
 }
 
+void board_init(void)
+{
+    /* ---- 装配（timer → 4 × motor preset → 无 plant（SERVO 无编码器）） ---- */
+    if (pwm_hal_register(&sim_pwm_hal) != 0) {
+        output_log("FATAL pwm_hal_register");
+        goto halt;
+    }
+    s_timer = pwm_timer_create_preset("pwm.servo.50");
+    if (s_timer == NULL) {
+        output_log("FATAL timer create");
+        goto halt;
+    }
+    for (uint32_t i = 0; i < SERVO_N; i++) {
+        const motor_cfg_t *base = motor_cfg_find("motor.servo.sg90");
+        if (base == NULL) { output_log("FATAL preset not found"); goto halt; }
+        motor_cfg_t cfg = *base;
+        cfg.timer   = s_timer;
+        cfg.channel = (uint8_t)(SERVO_CH_BASE + i);
+        cfg.pin_a   = s_pins[i];
+        cfg.pin_b   = -1;
+        cfg.enc_a   = -1;
+        cfg.enc_b   = -1;
+        s_servo[i] = motor_create(&cfg);
+        if (s_servo[i] == NULL) { output_log("FATAL motor_create"); goto halt; }
+    }
+    return;
+
+halt:
+    for (;;) vTaskDelay(pdMS_TO_TICKS(1000));   /* FATAL 挂起（可见可查） */
+}
+
 void app_main(void)
 {
     uart_init();
@@ -269,34 +301,9 @@ void app_main(void)
              (unsigned)SERVO_N, (unsigned)SERVO_FREQ, P_ADC_RAW);
     output_log(boot);
 
-    /* ---- 装配（timer → 4 × motor preset → 无 plant（SERVO 无编码器）） ---- */
-    if (pwm_hal_register(&sim_pwm_hal) != 0) {
-        output_log("FATAL pwm_hal_register");
-        goto done;
-    }
-    s_timer = pwm_timer_create_preset("pwm.servo.50");
-    if (s_timer == NULL) {
-        output_log("FATAL timer create");
-        goto done;
-    }
-    for (uint32_t i = 0; i < SERVO_N; i++) {
-        const motor_cfg_t *base = motor_cfg_find("motor.servo.sg90");
-        if (base == NULL) { output_log("FATAL preset not found"); goto done; }
-        motor_cfg_t cfg = *base;
-        cfg.timer   = s_timer;
-        cfg.channel = (uint8_t)(SERVO_CH_BASE + i);
-        cfg.pin_a   = s_pins[i];
-        cfg.pin_b   = -1;
-        cfg.enc_a   = -1;
-        cfg.enc_b   = -1;
-        s_servo[i] = motor_create(&cfg);
-        if (s_servo[i] == NULL) { output_log("FATAL motor_create"); goto done; }
-    }
+    /* ---- 板级装配（board_init：库隐函数，引脚只在此出现） ---- */
+    board_init();
 
     /* ---- 场景运行 ---- */
     xTaskCreate(app_loop, "p07_servo", 4096, NULL, 5, NULL);
-    return;
-
-done:
-    for (;;) vTaskDelay(pdMS_TO_TICKS(1000));   /* FATAL 挂起（可见可查） */
 }

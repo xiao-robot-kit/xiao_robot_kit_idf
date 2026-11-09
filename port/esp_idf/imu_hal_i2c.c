@@ -8,21 +8,17 @@
 #include "driver/i2c_master.h"
 #include "port_i2c.h"       /* 本目录；类型契约来自 vendor 库包 imu/imu_hal_i2c.h */
 
-/* 板级固定（XIAO Robot Board 实机引脚） */
-#define PORT_I2C_SDA  5
-#define PORT_I2C_SCL  6
-#define PORT_I2C_ADDR 0x6A          /* LSM6DS3TR-C（SA0 接地） */
-
 static i2c_master_bus_handle_t s_bus;
 static i2c_master_dev_handle_t s_dev;
-static uint32_t                 s_speed_hz;
+static uint8_t  s_dev_addr;          /* init 注册的器件地址（read/write 契约校验用） */
+static uint32_t s_speed_hz;
 
-int esp_port_i2c_init(uint32_t speed_hz)
+int esp_port_i2c_init(uint32_t speed_hz, int sda, int scl, uint8_t addr)
 {
     i2c_master_bus_config_t bus_cfg = {
         .i2c_port = I2C_NUM_0,
-        .sda_io_num = PORT_I2C_SDA,
-        .scl_io_num = PORT_I2C_SCL,
+        .sda_io_num = sda,
+        .scl_io_num = scl,
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt = 7,
         .intr_priority = 0,
@@ -33,12 +29,13 @@ int esp_port_i2c_init(uint32_t speed_hz)
 
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = PORT_I2C_ADDR,
+        .device_address = addr,
         .scl_speed_hz = speed_hz,
         .scl_wait_us = 0,           /* 默认超时 */
     };
     if (i2c_master_bus_add_device(s_bus, &dev_cfg, &s_dev) != ESP_OK) return -1;
 
+    s_dev_addr = addr;
     s_speed_hz = speed_hz;
     return 0;
 }
@@ -47,7 +44,7 @@ int esp_port_i2c_init(uint32_t speed_hz)
 static int port_write(uint8_t addr, uint8_t reg, const uint8_t *tx, size_t n, void *ctx)
 {
     (void)ctx;
-    if (addr != PORT_I2C_ADDR) return -1;   /* 单器件总线，addr 契约仍校验 */
+    if (addr != s_dev_addr) return -1;   /* 单器件总线，addr 契约仍校验 */
     uint8_t buf[1 + 8];
     if (n > 8) return -1;                   /* 驱动最大单笔：1 寄存器值 */
     buf[0] = reg;
@@ -59,7 +56,7 @@ static int port_write(uint8_t addr, uint8_t reg, const uint8_t *tx, size_t n, vo
 static int port_read(uint8_t addr, uint8_t reg, uint8_t *rx, size_t n, void *ctx)
 {
     (void)ctx;
-    if (addr != PORT_I2C_ADDR) return -1;
+    if (addr != s_dev_addr) return -1;
     return i2c_master_transmit_receive(s_dev, &reg, 1, rx, n, -1) == ESP_OK ? 0 : -1;
 }
 

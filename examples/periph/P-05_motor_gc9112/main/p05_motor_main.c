@@ -26,12 +26,21 @@
 #include "driver/uart_vfs.h"
 #include "mtr/motor.h"
 #include "motor_hal_sim.h"
+#include "port.h"             /* port/esp_idf：board_init 隐函数 */
 
 #if !P_SIM_MOTOR
 #error "P-05: 真硬件 LEDC 电机 HAL 未提供（本例程输出面 = motor_hal_sim 合成存储）"
 #endif
 
 #define P05_OUT_UART  UART_NUM_0
+
+/* 板级接线（board_init 唯一事实源；库层零写死） */
+#define M1_PIN_A    1     /* D1  GC9112 IN1 */
+#define M1_PIN_B    2     /* D2  GC9112 IN2 */
+#define M2_PIN_A    19    /* D19 GC9112 IN1 */
+#define M2_PIN_B    18    /* D18 GC9112 IN2 */
+#define MOTOR_FREQ  20000 /* 20kHz 载波 */
+#define MOTOR_CH    4     /* 双电机 × 桥对 2 通道 */
 
 /* ── 例程常量（参数零写死，全在此段） ───────────────────────────────────── */
 #define POLL_MS       2          /* 500Hz 控制环 */
@@ -64,16 +73,8 @@ static const step_t s_track[] = {
 /* 曲线采样点（调速扫档：duty 0.25/0.50/0.75/1.00 的 model rpm） */
 static const float s_curve_duty[N_CURVE] = { 0.25f, 0.50f, 0.75f };
 
-/* ── 槽描述（wiring：真板 D1/D2 与 D19/D18；sim 档引脚仅签入，无硬件语义） ── */
-typedef struct {
-    int   pin_a;        /* GC9112 IN1（真板） */
-    int   pin_b;        /* GC9112 IN2（真板） */
-    int   sign;         /* +1 正向 / −1 反向（M2 反转方向演示） */
-} slot_cfg_t;
-static const slot_cfg_t s_slots[N_SLOTS] = {
-    { 1,  2,  +1 },   /* M1: D1/D2 */
-    { 19, 18, -1 },   /* M2: D19/D18 */
-};
+/* ── 槽方向符号（场景演示数据：M2 反向驱动；接线见 board_init 引脚宏） ── */
+static const int s_sign[N_SLOTS] = { +1, -1 };
 
 /* ── 运行时状态 ── */
 static pwm_timer_t *s_timer;
@@ -100,34 +101,45 @@ static void app_puts(const char *s)
     uart_write_bytes(P05_OUT_UART, s, strlen(s));
 }
 
-/* ── 装配（P-00 同款：display 先断言核心，失败即停不静默） ─────────────────── */
-static int p05_init(void)
+/* ── 板级装配（board_init：库隐函数，引脚只在此出现） ───────────────────────── */
+void board_init(void)
 {
-
     /* 注册合成 PWM HAL（进程级一次） */
-    if (pwm_hal_register(&sim_pwm_hal) != 0) return -1;
+    if (pwm_hal_register(&sim_pwm_hal) != 0) {
+        app_puts("FATAL P-05 pwm_hal_register\r\n");
+        for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 
     /* 定时器：20kHz / 4 通道（两电机 × 桥对 2 通道） */
-    s_timer = pwm_timer_create(20000, 4);
-    if (s_timer == NULL) return -1;
+    s_timer = pwm_timer_create(MOTOR_FREQ, MOTOR_CH);
+    if (s_timer == NULL) {
+        app_puts("FATAL P-05 pwm_timer_create\r\n");
+        for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 
     /* 双电机（motor.dc.generic 底版；channel 成对占用 ch/ch+1） */
+    const int pin_a[N_SLOTS] = { M1_PIN_A, M2_PIN_A };
+    const int pin_b[N_SLOTS] = { M1_PIN_B, M2_PIN_B };
     for (int i = 0; i < N_SLOTS; i++) {
         const motor_cfg_t *base = motor_cfg_find("motor.dc.generic");
-        if (base == NULL) return -1;
+        if (base == NULL) {
+            app_puts("FATAL P-05 preset not found\r\n");
+            for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
+        }
         uint8_t ch = (uint8_t)(i * 2);
         motor_cfg_t cfg = *base;
-        cfg.timer  = s_timer;
+        cfg.timer   = s_timer;
         cfg.channel = ch;
-        cfg.pin_a  = s_slots[i].pin_a;
-        cfg.pin_b  = s_slots[i].pin_b;
-        motor_t *m = motor_create(&cfg);
-        if (m == NULL) return -1;
-        s_motors[i] = m;
-        s_ch[i]     = ch;
-        s_dir[i]    = s_slots[i].sign;
+        cfg.pin_a   = pin_a[i];
+        cfg.pin_b   = pin_b[i];
+        s_motors[i] = motor_create(&cfg);
+        if (s_motors[i] == NULL) {
+            app_puts("FATAL P-05 motor_create\r\n");
+            for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        s_ch[i]  = ch;
+        s_dir[i] = s_sign[i];
     }
-    return 0;
 }
 
 /* ── 每档执行：set_target → poll 一拍输出 → 回读桥两臂（直通零容忍断言） ────── */
@@ -156,10 +168,8 @@ static void run_step(int slot, const step_t *st, uint32_t now_us, char *out, int
 
 void app_main(void)
 {
-    if (p05_init() != 0) {
-        uart_write_bytes(P05_OUT_UART, "FATAL P-05 init failed\r\n", 25);
-        return;
-    }
+    board_init();   /* 板级装配：加载本实例所用硬件（失败即挂起不返回） */
+
     char line[96];
     const char *boot = "OK boot P-05_motor_gc9112 (M1D1/2 M2D19/18 sim)";
     app_puts(boot); app_puts("\r\n");

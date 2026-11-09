@@ -4,18 +4,18 @@
 #
 # Component wiring (public-repo layout):
 #   - xiao_pstore library target (pstore.c) from repository root
-#   - _shared/pstore_flash.c  raw partition media backend (ESP partition API)
+#   - port/esp_idf/pstore_flash.c  raw partition media backend (ESP partition API)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
+set(PORT_ESP_IDF_DIR ${LIBS_ROOT}/port/esp_idf)
 
 
 set(P11_SRCS
     "p11_pstore_main.c"
-    "${SHARED_DIR}/pstore_flash.c")
+    "${PORT_ESP_IDF_DIR}/pstore_flash.c")
 set(P11_INCS
     "."
-    "${SHARED_DIR}")
+    "${PORT_ESP_IDF_DIR}")
 
 # REQUIRES listed unconditionally (IDF component discovery runs before cmake -D
 # cache evaluation)
@@ -27,4 +27,3 @@ idf_component_register(
 
 add_subdirectory(${LIBS_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/xiao_libs)
 target_link_libraries(${COMPONENT_LIB} PUBLIC xiao_pstore)
-

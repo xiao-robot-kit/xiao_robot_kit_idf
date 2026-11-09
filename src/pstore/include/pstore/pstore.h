@@ -9,9 +9,9 @@
  * @file    pstore.h
  * @brief   参数持久化组件：条目注册表 + 统一帧序列化 + CRC32 + 两阶段原子加载
  *
- * @note    提炼自旧式实现自有实现 旧式实现：
+ * @note    提炼自旧式实现：
  *          - `embedded/src/shared/pstore/pstore.c`（序列化 / CRC / 条目注册——重组）
- *          - `embedded/examples/_shared/pstore/pstore.c`（flash 后端思路——平台件分层）
+ *          - `embedded` 私有项目 flash 后端（flash 后端思路——平台件分层）
  *          重组非照搬：句柄实例化 + 参数零写死 + 后端带 ctx，帧格式自 v1 起算
  *          （与旧式实现格式不兼容，那是封存树的资产，按 INT-5 单向蒸馏）。
  *

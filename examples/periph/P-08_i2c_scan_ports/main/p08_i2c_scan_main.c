@@ -32,10 +32,9 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "driver/usb_serial_jtag.h"
-#if P_SIM_SCAN
-/* 合成扫描：无平台依赖 */
-#else
-#include "port_i2c.h"         /* port/esp_idf：I2C 平台端点（唯一 esp 头出现处） */
+#include "port.h"             /* port/esp_idf：board_init 隐函数 */
+#if !P_SIM_SCAN
+#include "port_i2c.h"         /* port/esp_idf：I2C 平台端点（esp_port_i2c_init/probe） */
 #endif
 
 #define APP_NAME       "P-08_i2c_scan_ports"
@@ -53,6 +52,12 @@ enum {
     APP_REPLAY_MAX    = 32,    /* 事件回放缓冲（P-02 模式：探针晚连不丢事件） */
     APP_REPLAY_LEN    = 96,
 };
+
+/* 板级接线（board_init 唯一事实源；库层零写死） */
+#define BOARD_I2C_SDA   5      /* D4 */
+#define BOARD_I2C_SCL   6      /* D5 */
+#define BOARD_I2C_ADDR  0x6A   /* 板载 IMU（真扫档 init 注册） */
+#define BOARD_I2C_SPEED 400000 /* 400 kHz */
 
 /* 地址表（板面固定 + 登记区）。KNOWN=已登记（IMU 0x6A）；NEW=表外需登记 */
 typedef struct {
@@ -149,18 +154,25 @@ static void scan_round(int round)
 
 /* ---------------------------------------------------------------- 主流程 */
 
+/* 板级装配（board_init：库隐函数，引脚只在此出现） */
+void board_init(void)
+{
+#if !P_SIM_SCAN
+    if (esp_port_i2c_init(BOARD_I2C_SPEED, BOARD_I2C_SDA, BOARD_I2C_SCL, BOARD_I2C_ADDR) != 0) {
+        event_log("ERR i2c init failed");
+        for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+#endif
+}
+
 void app_main(void)
 {
+    board_init();   /* 板级装配：SIM 空操作 / 真扫安装 I2C 总线 */
 
     event_log("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
               APP_BOARD, APP_MCU);
 
 #if !P_SIM_SCAN
-    /* 真扫描档：安装 I2C 总线（400kHz，board 固定） */
-    if (esp_port_i2c_init(400000) != 0) {
-        event_log("ERR i2c init failed");
-        for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
-    }
     event_log("I2C bus 400kHz ready (SDA=D4/GPIO5 SCL=D5/GPIO6)");
 #else
     event_log("I2C bus SIM echo (no hw)");

@@ -5,7 +5,7 @@
 #   - xiao_motor library target from repository root (add_subdirectory below)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
+set(PORT_ESP_IDF_DIR ${LIBS_ROOT}/port/esp_idf)
 
 # provided, rejected by #error in C): real-board output needs LEDC timers
 # (D15/D9/D0/D8 <-> 50Hz); port layer only ships motor_hal_sim.c. Setting 0 is
@@ -19,10 +19,10 @@ set(P_ADC_RAW 1 CACHE STRING "1=synthetic voltage (default); 0=real ADC sampling
 idf_component_register(
     SRCS
         "p07_servo_main.c"
-        "${SHARED_DIR}/motor_hal_sim.c"
+        "${PORT_ESP_IDF_DIR}/motor_hal_sim.c"
     INCLUDE_DIRS
         "."
-        "${SHARED_DIR}"
+        "${PORT_ESP_IDF_DIR}"
     REQUIRES esp_adc esp_driver_gpio esp_driver_uart esp_driver_usb_serial_jtag esp_timer
 )
 

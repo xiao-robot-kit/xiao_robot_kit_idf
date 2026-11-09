@@ -1,0 +1,39 @@
+{
+  "//": "xiao_robot_kit_idf 公开仓多根工作区——13 个 periph 例程各自是独立 ESP-IDF 工程。ESP-IDF 扩展对「活动文件夹」操作：选中某例程文件夹后 Build/Flash 即针对该工程。",
+  "folders": [
+    { "path": ".", "name": "🏠 公开库（src + port）" },
+    { "path": "examples/periph/P-00_hello_bringup", "name": "🔆 P-00 点灯启动" },
+    { "path": "examples/periph/P-01_imu_lsm6ds3", "name": "🧭 P-01 IMU 姿态(LSM6DS3)" },
+    { "path": "examples/periph/P-02_button_k7", "name": "🔘 P-02 按键(K7)" },
+    { "path": "examples/periph/P-03_rgb_ws2812", "name": "🎨 P-03 RGB(WS2812)" },
+    { "path": "examples/periph/P-04_battery_voltage", "name": "🔋 P-04 电池电压" },
+    { "path": "examples/periph/P-05_motor_gc9112", "name": "🛞 P-05 电机(GC9112)" },
+    { "path": "examples/periph/P-06_encoder_read", "name": "📏 P-06 编码器读取" },
+    { "path": "examples/periph/P-07_servo_pwm", "name": "🎚️ P-07 舵机 PWM" },
+    { "path": "examples/periph/P-08_i2c_scan_ports", "name": "🔌 P-08 I2C 端口扫描" },
+    { "path": "examples/periph/P-09_uart_passthrough", "name": "➰ P-09 UART 透传" },
+    { "path": "examples/periph/P-10_imu_heater", "name": "🌡️ P-10 IMU 加热" },
+    { "path": "examples/periph/P-11_pstore_params", "name": "💾 P-11 参数存储" },
+    { "path": "examples/periph/P-12_spare_gpio_tpxx", "name": "📎 P-12 备用 GPIO(TPxx)" }
+  ],
+  "settings": {
+    "//端口": "idf.port 不写死（auto 模式）：VSCode 状态栏 ESP-IDF: Select Port 选 Auto，用 esptool.py 自动探测。换板/换口无需改文件。",
+    "idf.serialPortDetectionTimeout": 60,
+    "idf.flashType": "UART",
+    "idf.flashBaudRate": "921600",
+    "idf.openOcdConfigs": ["interface/ftdi/esp32_dev_kit-1.cfg", "target/esp32s3.cfg"],
+
+    "//加速-文件监视排除": "VSCode 不再监视/搜索 build 产物（UI 防卡）",
+    "files.watcherExclude": {
+      "**/build*/**": true,
+      "**/.git/objects/**": true,
+      "**/__pycache__/**": true
+    },
+    "search.exclude": {
+      "**/build*/**": true,
+      "**/sdkconfig.old": true,
+      "**/__pycache__/**": true
+    },
+    "search.followSymlinks": false
+  }
+}

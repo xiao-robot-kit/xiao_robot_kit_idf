@@ -60,7 +60,7 @@ ESP-IDF v6.1), or copy the two-line CMake pattern into your own project:
 add_subdirectory(xiao_robot_kit_idf)          # this repository
 ```
 
-Then in `main.c` (~20 lines):
+Then in `main.c` (~30 lines):
 
 ```c
 #include <stdio.h>
@@ -68,12 +68,24 @@ Then in `main.c` (~20 lines):
 #include "freertos/task.h"
 #include "imu/lsm6ds3.h"    /* xiao_imu — headers keep their component prefix */
 #include "imu/imu_cfg.h"
-#include "port_i2c.h"       /* from examples/_shared: fills imu_i2c_bus_t */
+#include "port.h"           /* port/esp_idf: declares board_init(void) */
+#include "port_i2c.h"       /* port/esp_idf: esp_port_i2c_init + esp_port_i2c_bus */
+
+/* board wiring — the only place pins/speed/address appear (application level) */
+#define BOARD_I2C_SDA   5      /* D4 */
+#define BOARD_I2C_SCL   6      /* D5 */
+#define BOARD_I2C_ADDR  0x6A
+#define BOARD_I2C_SPEED 400000
+
+void board_init(void)          /* contract from port/esp_idf/port.h */
+{
+    esp_port_i2c_init(BOARD_I2C_SPEED, BOARD_I2C_SDA, BOARD_I2C_SCL, BOARD_I2C_ADDR);
+}
 
 void app_main(void)
 {
+    board_init();                              /* assemble this board's I2C bus */
     const imu_cfg_t *cfg = imu_cfg_find("imu.raw.104");  /* preset, zero hardcoded params */
-    esp_port_i2c_init(cfg->i2c_speed_hz);
 
     lsm6ds3_t imu;
     lsm6ds3_init(&imu, &esp_port_i2c_bus);
@@ -126,9 +138,10 @@ xiao_robot_kit_idf/
 │   ├── calibration/        #   IMU bias + temp compensation (include/cal/)
 │   ├── imu_heater/         #   heater control state machine (include/imu_heater/)
 │   └── proto/              #   serial frame codec, wire-format contract (include/proto/)
+├── port/esp_idf/           #   ESP-IDF port layer: I2C endpoint, motor/sim HAL, pstore flash backend
 ├── tests/                  #   per-component unit tests (each defines main())
 └── examples/
-    ├── _shared/            #   port layer + simulated data sources (shared by all examples)
+    ├── common/sim/         #   synthetic data sources (IMU, motor) shared by examples
     └── periph/             #   13 board examples, one per peripheral (P-00 ~ P-12)
         ├── P-00_hello_bringup/     toolchain / UART self-check
         ├── P-01_imu_lsm6ds3/       on-board IMU
@@ -148,10 +161,9 @@ xiao_robot_kit_idf/
 ## Board examples (P-00 ~ P-12)
 
 Each example is a **standalone ESP-IDF project**; `cd` into one and build it.
-Nothing is shared except `examples/_shared/` (port layer + simulated data
-sources), so an example never depends on another example's build. Every example
-consumes the library targets from the root `CMakeLists.txt` instead of copying
-component sources.
+The shared port layer and synthetic data sources live in `port/esp_idf/` and
+`examples/common/sim/`, so an example never depends on another example's build. Every example consumes the library targets from the
+root `CMakeLists.txt` instead of copying component sources.
 
 ```bash
 cd examples/periph/P-00_hello_bringup

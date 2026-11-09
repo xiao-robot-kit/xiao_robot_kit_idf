@@ -26,6 +26,7 @@
 #include "driver/usb_serial_jtag.h"
 #include "pstore/pstore.h"
 #include "pstore_flash.h"       /* port/esp_idf：flash 裸分区后端（介质） */
+#include "port.h"               /* port/esp_idf：board_init 隐函数 */
 
 #define APP_NAME       "P-11_pstore_params"
 #define APP_VERSION    "0.1.0"
@@ -80,17 +81,23 @@ static void say(const char *fmt, ...)
 
 /* ---------------------------------------------------------------- 主流程 */
 
-void app_main(void)
+/* 板级装配（board_init：库隐函数，flash 介质只在此打开） */
+void board_init(void)
 {
-
-    say("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
-        APP_BOARD, APP_MCU);
-
-    /* 1) flash 裸分区后端 + pstore 会话（T-006 同款介质链） */
     if (pstore_flash_open(&s_be, &s_flash, APP_NS_PART_LABEL) != 0) {
         say("FATAL store partition not found (partitions.csv?)");
         for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
     }
+}
+
+void app_main(void)
+{
+    say("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
+        APP_BOARD, APP_MCU);
+
+    board_init();   /* 板级装配：flash 裸分区后端 */
+
+    /* pstore 会话（组件层装配，非板级） */
     const pstore_cfg_t cfg = {
         .backend = &s_be,
         .capacity = APP_STORE_CAPACITY,

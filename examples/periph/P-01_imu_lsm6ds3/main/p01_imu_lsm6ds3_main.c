@@ -31,12 +31,13 @@
 #include "esp_timer.h"
 #include "imu/imu_types.h"
 #include "driver/usb_serial_jtag.h"
+#include "port.h"             /* port/esp_idf：board_init 隐函数 */
+#include "port_i2c.h"         /* port/esp_idf：I2C 平台端点（esp_port_i2c_init / bus） */
 #if P_SIM_IMU
-#include "imu_sim.h"          /* testing/imu_sim：合成源（跨实验共享单源，只读） */
+#include "imu_sim.h"          /* examples/common/sim：合成源（跨例程共享单源，只读） */
 #else
-#include "imu/lsm6ds3.h"      /* vendor xiao 组件库：驱动 v0.1.0+ pin（MEM-4 只读） */
+#include "imu/lsm6ds3.h"      /* xiao_imu 组件库：驱动 */
 #include "imu/imu_cfg.h"
-#include "port_i2c.h"         /* port/esp_idf：I2C 平台端点（唯一 esp 头出现处） */
 #endif
 
 #define APP_NAME       "P-01_imu_lsm6ds3"
@@ -46,7 +47,13 @@
 #define APP_UART_BAUD  115200
 #define APP_TX_TIMEOUT_MS 100
 
-/* 真传感器预设（参数零写死：速率/量程/I2C 速度全来自注册表） */
+/* 板级接线（board_init 唯一事实源；库层零写死） */
+#define BOARD_I2C_SDA    5          /* D4 */
+#define BOARD_I2C_SCL    6          /* D5 */
+#define BOARD_I2C_ADDR   0x6A       /* LSM6DS3TR-C，SA0 接地 */
+#define BOARD_I2C_SPEED  400000     /* 400 kHz */
+
+/* 真传感器预设（速率/量程全来自预设表） */
 #define APP_CFG_PRESET "imu.raw.104"      /* 104Hz ODR + 400kHz 总线 + 10ms 节拍 */
 #define APP_SIM_PRESET "sim.exp2.static"   /* 合成源：100Hz 静止真值 + 注入已知零偏 */
 
@@ -84,6 +91,16 @@ static void app_printf(const char *fmt, ...)
 /* float → 毫单位整数（mg / mdps / m°C；仅展示不做判据） */
 static int f_milli(float v) { return (int)(v * 1000.0f); }
 
+/* ---------------------------------------------------------------- 板级装配 */
+
+/* board_init：库隐函数，按本实例装配板级硬件（引脚/速率只在此出现） */
+void board_init(void)
+{
+#if !P_SIM_IMU
+    esp_port_i2c_init(BOARD_I2C_SPEED, BOARD_I2C_SDA, BOARD_I2C_SCL, BOARD_I2C_ADDR);
+#endif
+}
+
 /* ---------------------------------------------------------------- 数据源 */
 
 static uint32_t s_period_ms;   /* 推流节拍，ms（源配置派生） */
@@ -115,8 +132,7 @@ static int src_init(void)
 {
     const imu_cfg_t *ic = imu_cfg_find(APP_CFG_PRESET);
     if (!ic) return -2;
-    if (esp_port_i2c_init(ic->i2c_speed_hz) != 0) return -1;
-
+    /* I2C 总线已在 board_init 装配；此处只做传感器层面 init/probe/configure */
     lsm6ds3_init(&s_lsm, &esp_port_i2c_bus);
     int r = -1;
     for (int a = 0; a < APP_PROBE_ATTEMPT; a++) {
@@ -133,7 +149,7 @@ static int src_init(void)
     s_period_ms = ic->sample_period_ms;
     app_printf("INFO source=lsm6ds3 %s %uHz bus=%uHz",
                APP_CFG_PRESET, (unsigned)ic->accel_odr_hz,
-               (unsigned)ic->i2c_speed_hz);
+               (unsigned)BOARD_I2C_SPEED);
     return 0;
 }
 
@@ -176,6 +192,7 @@ static void i2c_scan(void)
 
 void app_main(void)
 {
+    board_init();   /* 板级装配：加载本实例所用硬件 */
 
     app_printf("OK boot %s v%s | board=%s | mcu=%s %s",
                APP_NAME, APP_VERSION, APP_BOARD, APP_MCU,

@@ -4,14 +4,15 @@
 #
 # Component wiring (public-repo layout):
 #   - xiao_imu library target  from repository root (add_subdirectory, below)
-#   - _shared/imu_sim.c        synthetic data source (P_SIM_IMU=1, shared across examples)
-#   - _shared/imu_hal_i2c.c    real I2C platform endpoint (P_SIM_IMU=0)
+#   - examples/common/sim/imu_sim.c    synthetic data source (P_SIM_IMU=1)
+#   - port/esp_idf/imu_hal_i2c.c       real I2C platform endpoint (P_SIM_IMU=0)
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
-set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
+set(PORT_ESP_IDF_DIR ${LIBS_ROOT}/port/esp_idf)
+set(SIM_DIR ${LIBS_ROOT}/examples/common/sim)
 
 #              WHO/SCAN are synthesized echoes)
-#             0 = real I2C sensor (LSM6DS3TR-C @0x6A via _shared I2C endpoint)
+#             0 = real I2C sensor (LSM6DS3TR-C @0x6A via port/esp_idf I2C endpoint)
 if(NOT DEFINED P_SIM_IMU)
     set(P_SIM_IMU 1)
 endif()
@@ -22,15 +23,16 @@ endif()
 set(P01_SRCS "p01_imu_lsm6ds3_main.c")
 set(P01_INCS
     "."
-    "${SHARED_DIR}"
+    "${PORT_ESP_IDF_DIR}"
+    "${SIM_DIR}"
 )
 
 if(P_SIM_IMU)
-    list(APPEND P01_SRCS "${SHARED_DIR}/imu_sim.c")
+    list(APPEND P01_SRCS "${SIM_DIR}/imu_sim.c")
 else()
     # Real sensor stream: I2C HAL endpoint + driver + preset table come from
     # the xiao_imu library (SRCS via target link, below).
-    list(APPEND P01_SRCS "${SHARED_DIR}/imu_hal_i2c.c")
+    list(APPEND P01_SRCS "${PORT_ESP_IDF_DIR}/imu_hal_i2c.c")
 endif()
 
 # REQUIRES must list all components unconditionally (IDF component discovery

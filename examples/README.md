@@ -8,7 +8,7 @@
 | Group | Count | What it is for |
 | --- | --- | --- |
 | [Board peripherals](#1-board-peripheral-examples-13) (`periph/`) | **13** | 每个板载外设一个例程——「确认硬件能用」这一层 |
-| `_shared/` | sources | 端口层（I2C 端点、flash 后端）+ 合成数据源，编进各例程 |
+| `port/esp_idf/` + `examples/common/sim/` | sources | 端口层（I2C 端点、flash 后端）+ 合成数据源，编进各例程 |
 
 推荐首次过板的顺序：**P-00 → P-01 → P-02 → P-03**（见[建议路径](#5-suggested-routes)）。
 
@@ -24,7 +24,7 @@ grep for.
 | Periph-eral | # | Project | What the example does | Pins (board net) | Uses | You should see |
 | --- | --- | --- | --- | --- | --- | --- |
 | USB serial (no GPIO) | P-00 | [`P-00_hello_bringup`](periph/P-00_hello_bringup) | Smallest possible skeleton: proves toolchain → flash → UART log chain. Touches **zero** GPIOs | — (USB-C, USB-Serial-JTAG 115200 8N1) | ESP-IDF only | `OK boot … board=XIAO Robot Board V1.0`, `HELLO workflow: USB-CDC log link up`, then `HEART <n> uptime=<s> s` once a second |
-| IMU (6-axis) | P-01 | [`P-01_imu_lsm6ds3`](periph/P-01_imu_lsm6ds3) | `WHO_AM_I` probe → configure from preset (`imu.raw.104`) → 100 Hz polling for 5 min + I2C bus scan | SDA=D4/GPIO5, SCL=D5/GPIO6 (on-board bus, 400 kHz, defined in `_shared/imu_hal_i2c.c`) | `xiao_imu` | `WHO 0x6A ok`, `IMU n=100 err=0 …`, after 300 s `VERDICT PASS`; `SCAN dev=0x6A` |
+| IMU (6-axis) | P-01 | [`P-01_imu_lsm6ds3`](periph/P-01_imu_lsm6ds3) | `WHO_AM_I` probe → configure from preset (`imu.raw.104`) → 100 Hz polling for 5 min + I2C bus scan | SDA=D4/GPIO5, SCL=D5/GPIO6 (on-board bus, 400 kHz, defined in `port/esp_idf/imu_hal_i2c.c`) | `xiao_imu` | `WHO 0x6A ok`, `IMU n=100 err=0 …`, after 300 s `VERDICT PASS`; `SCAN dev=0x6A` |
 | Button K7 | P-02 | [`P-02_button_k7`](periph/P-02_button_k7) | Debounce (≥20 ms) + short-press (<800 ms) / long-press (≥800 ms, fires at the threshold) events | D11/GPIO11 (internal pull-up, press = low) | ESP-IDF `gpio` | `KEY SHORT n=… hold=… ms` / `KEY LONG n=… hold=… ms`, final `KEY done n=… deb=… jitter=…` |
 | RGB / WS2812 | P-03 | [`P-03_rgb_ws2812`](periph/P-03_rgb_ws2812) | RMT-driven WS2812 strip: phase-shifted colour wheel + two fixed pixels to prove single-LED addressing | D13/GPIO13 → R79 → U4 buffer → J7 (**must go through J7**) | ESP-IDF `rmt` | `HUE 0 r255 g0 b0` / `HUE 120 …` / `HUE 240 …`, per-phase `LED phase=… led0=… led5=…` |
 | Battery gauge | P-04 | [`P-04_battery_voltage`](periph/P-04_battery_voltage) | One-shot ADC on the 100K:30K divider → SOC / remaining capacity from `xiao_1s_1400mah` preset → low-voltage alarm | GPIO16 (ADC2_CH5, DB_11) | `xiao_battery` + `esp_adc` | `BATT v=… soc=…% mah=… alarm=0/1`, plus `SRC synthetic-adc` vs `SRC adc2_ch5 GPIO16` |
@@ -69,12 +69,15 @@ will produce bogus failures if run concurrently.
 idf.py -DP_SIM_IMU=0 build     # 例：P-01 切真实 I2C 数据源
 ```
 
-## 4. Shared sources (`_shared/`)
+## 4. Port & synthetic sources (`port/esp_idf/`, `examples/common/sim/`)
 
-Not a project. Compiled into the examples that need it: the ESP-IDF I2C endpoint,
-flash `pstore` backend, and the synthetic sources (IMU, motor HAL). Changing a
-file here affects every example — the built-in variant switches keep the
-real/simulated boundary explicit.
+Not projects. Compiled into the examples that need them: the ESP-IDF I2C
+endpoint + motor/sim HAL + flash `pstore` backend live under
+[`port/esp_idf/`](../port/esp_idf/), and the synthetic data sources (IMU, motor)
+under [`examples/common/sim/`](common/sim/). Pins are **not** hardcoded here —
+each example assembles its own wiring inside its `main.c` `board_init(void)`.
+Changing a file here affects every example — the built-in variant switches keep
+the real/simulated boundary explicit.
 
 ## 5. Suggested routes
 

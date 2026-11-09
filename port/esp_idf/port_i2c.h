@@ -10,19 +10,22 @@
  *
  * @note    本目录是固件侧唯一允许出现 esp_xxx / i2c_master_xxx 平台头的地方
  *          （依赖单向铁律的平台端点）。
- * @note    板级固定（XIAO Robot Board 实机验证引脚）：SDA=GPIO5(D4)、SCL=GPIO6(D5)，
- *          总线 I2C_NUM_0。
+ * @note    板级接线（SDA/SCL/器件地址）由各例程 board_init 经参数传入，
+ *          本端点不写死任何板子；总线号固定 I2C_NUM_0。
  * @note    v6.x 已移除 legacy 旧 I2C 驱动头，本实现用 i2c_master 新 API。
  */
 
 /**
- * @brief   安装 I2C 主机总线并添加 IMU 器件
- * @param   speed_hz  总线速率（来自配置表 preset 的 i2c_speed_hz，禁止写死）
+ * @brief   安装 I2C 主机总线并添加器件（引脚/速率/地址全走参数，不写死板子）
+ * @param   speed_hz  总线速率，Hz（>0；由调用方 board_init 传入）
+ * @param   sda      SDA 引脚号（由调用方 board_init 传入）
+ * @param   scl      SCL 引脚号（由调用方 board_init 传入）
+ * @param   addr     7-bit 器件地址（由调用方 board_init 传入）
  * @return  0 = 成功；-1 = 失败
- * @note    单器件场景：exp 系列只挂 0x6A；read/write 的 addr 参数与本器件
- *          不符时返回错误（契约 addr 语义不被忽略）。
+ * @note    单器件总线：read/write 的 addr 参数须等于 init 注册的 addr，
+ *          否则返回错误（契约 addr 语义不被忽略）。
  */
-int esp_port_i2c_init(uint32_t speed_hz);
+int esp_port_i2c_init(uint32_t speed_hz, int sda, int scl, uint8_t addr);
 
 /**
  * @brief   I2C 总线地址探测（P-08 总线扫描端点）

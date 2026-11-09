@@ -35,6 +35,7 @@
 #include "mtr/motor.h"
 #include "mtr/pwm_hal.h"
 #include "motor_hal_sim.h"
+#include "port.h"             /* port/esp_idf：board_init 隐函数 */
 
 /* ---- 双宏编译契约（未定义即拒绝；本文件不静默退化为任一态） ---- */
 #ifndef P_SIM_MOTOR
@@ -289,32 +290,22 @@ static void app_loop(void *arg)
     }
 }
 
-void app_main(void)
+void board_init(void)
 {
-    /* ---- 输出面 ---- */
-    uart_init();
-
-    char boot[96];
-    snprintf(boot, sizeof(boot),
-             "OK boot P-06_encoder_read cpr=7200 rate=%uHz sim_motor=1\n",
-             (unsigned)EXP_POLL_RATE);
-    event_log(boot);
-    output_flush();
-
     /* ---- 装配（preset → timer → motor → attach enc HAL → register plant） ---- */
     if (pwm_hal_register(&sim_pwm_hal) != 0) {
         tx_str("FATAL pwm_hal_register\n");
-        goto done;
+        goto halt;
     }
     s_timer = pwm_timer_create_preset("pwm.motor.20k");
     if (s_timer == NULL) {
         tx_str("FATAL timer create\n");
-        goto done;
+        goto halt;
     }
     const motor_cfg_t *base = motor_cfg_find("motor.enc.n20");
     if (base == NULL) {
         tx_str("FATAL preset not found\n");
-        goto done;
+        goto halt;
     }
     motor_cfg_t cfg = *base;
     cfg.timer   = s_timer;
@@ -326,11 +317,11 @@ void app_main(void)
     s_motor = motor_create(&cfg);
     if (s_motor == NULL) {
         tx_str("FATAL motor_create\n");
-        goto done;
+        goto halt;
     }
     if (motor_hal_attach(s_motor, &sim_encoder_hal) != 0) {
         tx_str("FATAL hal attach\n");
-        goto cleanup_motor;
+        goto halt;
     }
     /* plant：桥对 = ch/ch+1，与 cfg.channel 同源；手转注入走桥对，电转闭环同 plant */
     sim_motor_plant_cfg_t plant = {
@@ -346,16 +337,29 @@ void app_main(void)
     };
     if (sim_motor_plant_register(&plant) != 0) {
         tx_str("FATAL plant register\n");
-        goto cleanup_motor;
+        goto halt;
     }
+    return;
+
+halt:
+    for (;;) vTaskDelay(pdMS_TO_TICKS(1000));   /* FATAL 挂起（可见可查） */
+}
+
+void app_main(void)
+{
+    /* ---- 输出面 ---- */
+    uart_init();
+
+    char boot[96];
+    snprintf(boot, sizeof(boot),
+             "OK boot P-06_encoder_read cpr=7200 rate=%uHz sim_motor=1\n",
+             (unsigned)EXP_POLL_RATE);
+    event_log(boot);
+    output_flush();
+
+    /* ---- 板级装配（board_init：库隐函数，引脚只在此出现） ---- */
+    board_init();
 
     /* ---- 场景运行 ---- */
     xTaskCreate(app_loop, "p06_enc", 4096, NULL, 5, NULL);
-    return;
-
-cleanup_motor:
-    (void)motor_destroy(s_motor);
-    s_motor = NULL;
-done:
-    for (;;) vTaskDelay(pdMS_TO_TICKS(1000));   /* FATAL 挂起（可见可查） */
 }
