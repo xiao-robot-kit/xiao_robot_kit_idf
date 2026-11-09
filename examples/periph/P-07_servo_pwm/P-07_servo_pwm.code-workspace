@@ -6,16 +6,6 @@
     }
   ],
   "settings": {
-    "files.exclude": {
-      "build": true,
-      "sdkconfig": true,
-      "dependencies.lock": true,
-      "managed_components": true
-    },
-    "search.exclude": {
-      "build": true,
-      "managed_components": true
-    },
     "idf.customExtraVars": {
       "IDF_TARGET": "esp32s3"
     },
