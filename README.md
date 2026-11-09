@@ -14,13 +14,21 @@ PWM are injected as function-pointer tables, so the same code runs on
 ESP-IDF, Arduino (see [`xiao_robot_kit_arduino`](https://github.com/xiao-robot-kit/xiao_robot_kit_arduino))
 or bare metal.
 
-**13 board examples** live in [`examples/periph/`](examples/periph) — one per
-on-board peripheral (IMU, button, RGB, battery, two DC motors, encoders, four
-servos, I2C expansion, Grove UART, heater, param store, spare pins); **14 deeper
-experiments** live under [`examples/imu`](examples/imu),
-[`examples/motor`](examples/motor) and [`examples/store_demo`](examples/store_demo)
-(calibration, attitude, closed-loop control, trajectory persistence). Each is a
-standalone ESP-IDF project built against the `xiao_*` libraries in this repo.
+**28 example projects**, grouped by the hardware they exercise — the full index
+with per-project pins, acceptance anchors and library usage is
+[`examples/README.md`](examples/README.md):
+
+| Group | Count | Location |
+| --- | --- | --- |
+| Board peripherals — one per on-board device | 13 | [`examples/periph/`](examples/periph) (P-00 … P-12) |
+| IMU pipeline — raw → calibrated → euler → quaternion → trajectory | 5 | [`examples/imu/`](examples/imu) |
+| Motor control — open loop → encoder → PID → S-curve → nested timers | 8 | [`examples/motor/`](examples/motor) |
+| Persistence across power loss | 1 | [`examples/store_demo/`](examples/store_demo) |
+| Quickstart template to copy | 1 | [`examples/idf/imu_quickstart/`](examples/idf/imu_quickstart) |
+
+Each is a standalone ESP-IDF project built against the `xiao_*` libraries in
+this repo; every one also builds with no board attached (simulated data source
+is the default — see the variant macros in [`examples/README.md`](examples/README.md#8-real-hardware-vs-simulated-data)).
 
 ## Design rules
 
@@ -195,6 +203,18 @@ output is done by the project's internal CI, not shipped here.
 
 Usage walkthroughs, wiring and troubleshooting for all 13 examples live in the
 docs repo: [`xiao_robot_kit_docs/examples/periph-index.md`](https://github.com/xiao-robot-kit/xiao_robot_kit_docs/blob/main/examples/periph-index.md).
+
+## Deeper experiments (14)
+
+Same library, one new capability per project — a failure localises to the stage
+you just added. Pins, frames and acceptance anchors per project:
+[`examples/README.md`](examples/README.md).
+
+| Group | Projects | What each one adds |
+| --- | --- | --- |
+| IMU pipeline (5) | `exp1_raw` → `exp2_calib` → `exp3_euler` → `exp4_quat` → `exp5_trajectory` | raw g/dps → bias calibration + temperature compensation **with persistence** → euler angles → quaternion (exp3 vs exp4 is a controlled A/B on the representation only) → attitude + specific-force dual stream for host-side trajectory |
+| Motor control (8) | `exp_motor_pwm` `_dc` `_servo` `_enc` `_pidscan` `_scurve` `_nested` `_qemu` | duty staircase (dead zone) → H-bridge sign → 5-point servo calibration → encoder speed loop step → 3×3 `kp×ki` grid → 7-phase S-curve with velocity feed-forward → channel isolation across two timers → all four kinds behind one `SCEN <n>` selector |
+| Persistence (1) | `store_demo` | `xiao_pstore` on a raw flash partition, no IMU dependency, with a QEMU power-cycle harness |
 
 Arduino users: the same C core ships as a self-contained Arduino library in
 [`xiao_robot_kit_arduino`](https://github.com/xiao-robot-kit/xiao_robot_kit_arduino).
