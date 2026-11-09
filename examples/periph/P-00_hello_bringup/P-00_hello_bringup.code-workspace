@@ -16,7 +16,9 @@
       "build": true,
       "managed_components": true
     },
-    "idf.adapterTargetName": "esp32s3",
+    "idf.customExtraVars": {
+      "IDF_TARGET": "esp32s3"
+    },
     "idf.currentSetup": "D:\\esp\\v6.1\\esp-idf",
     "idf.flashType": "UART"
   }
