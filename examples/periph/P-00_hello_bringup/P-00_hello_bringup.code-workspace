@@ -1,0 +1,33 @@
+{
+  "//": "🔆 P-00 点灯启动 单例程工作区——本工程根即 ESP-IDF 工程（CMakeLists.txt + main/）。串口不写死 idf.port，用状态栏 ESP-IDF: Select Port 选 Auto（esptool.py 自动探测）。",
+  "folders": [
+    {
+      "path": ".",
+      "name": "🔆 P-00 点灯启动"
+    },
+    {
+      "path": "../../../",
+      "name": "🏠 公开库（src + port）"
+    }
+  ],
+  "settings": {
+    "idf.serialPortDetectionTimeout": 60,
+    "idf.flashType": "UART",
+    "idf.flashBaudRate": "921600",
+    "idf.openOcdConfigs": [
+      "interface/ftdi/esp32_dev_kit-1.cfg",
+      "target/esp32s3.cfg"
+    ],
+    "files.watcherExclude": {
+      "**/build*/**": true,
+      "**/.git/objects/**": true,
+      "**/__pycache__/**": true
+    },
+    "search.exclude": {
+      "**/build*/**": true,
+      "**/sdkconfig.old": true,
+      "**/__pycache__/**": true
+    },
+    "search.followSymlinks": false
+  }
+}
