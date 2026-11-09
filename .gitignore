@@ -11,3 +11,8 @@ __pycache__/
 # 本机构建日志 / throwaway 验证脚本
 *.log
 _verify_*.bat
+
+# VSCode 扩展自动生成的机器相关配置（本机 IDF 路径 / clangd 路径 / 端口 / USB 位置）
+.vscode/settings.json
+.clangd
+
