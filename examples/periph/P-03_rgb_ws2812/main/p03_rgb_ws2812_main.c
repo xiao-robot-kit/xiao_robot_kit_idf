@@ -13,10 +13,8 @@
  *
  * 数据源二选一（编译期宏 P_SIM_LED，见 main/CMakeLists.txt，默认 1）：
  *  - P_SIM_LED=1：合成灯带（相位→色轮渐变 + 单灯定点，内存缓冲零硬件，
- *    QEMU 可测：QEMU 的 GPIO/RMT 无外接灯带）。
  *  - P_SIM_LED=0：真 RMT 发 GPIO13（真板 + J7 灯带）。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU）；0（默认）→ USB-Serial-JTAG（真板）。
  * 串口参数：115200 8N1（两路一致）。
  */
 
@@ -26,11 +24,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #if !P_SIM_LED
 #include "driver/rmt_tx.h"
 #endif
@@ -61,15 +55,10 @@
 /* ---------------------------------------------------------------- 输出层 */
 static void app_puts(const char *line)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, line, strlen(line));
-    uart_write_bytes(UART_NUM_0, "\r\n", 2);
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)line, strlen(line),
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
     usb_serial_jtag_write_bytes((const uint8_t *)"\r\n", 2,
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
-#endif
 }
 
 static void app_printf(const char *fmt, ...)
@@ -88,7 +77,6 @@ typedef struct { uint8_t r, g, b; } led_px_t;
 
 /**
  * @brief  HSV/相位 → RGB 线性色轮（0°红 → 120°绿 → 240°蓝 → 360°回红）。
- *        合法性断言留 QEMU：三分点 r255g0b0 / r0g255b0 / r0g0b255。
  */
 static led_px_t hue_to_rgb(int hue)
 {
@@ -126,7 +114,7 @@ static void frame_fill(led_px_t *px, int phase)
 /* ---------------------------------------------------------------- 灯阵渲染 */
 
 #if P_SIM_LED
-/* 合成灯带：维护内存灯阵 + 每周期打印（零硬件；QEMU 档）
+/* 合成灯带：维护内存灯阵 + 每周期打印（零硬件）
  * 打印用真实 phase（0/120/240 三分点断言落在相位上，非 tick 计数器） */
 static void render(const led_px_t *px, int phase)
 {
@@ -208,18 +196,6 @@ static void render(const led_px_t *px, int phase)
 
 void app_main(void)
 {
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_param_config(UART_NUM_0, &uc);
-    uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
-#endif
 
     app_printf("OK boot %s v%s | board=%s | mcu=%s %s",
                APP_NAME, APP_VERSION, APP_BOARD, APP_MCU,

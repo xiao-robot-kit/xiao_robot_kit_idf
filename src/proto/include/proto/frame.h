@@ -91,7 +91,7 @@
  *            方向桥带符号回读，符号 = 方向位）。
  *
  * @note 总长 = 3 + 6*n_tim + 16*n_rec（最大 63B ≤ PAYLOAD_MAX）；场景号与槽数
- *       单源 = apps/exp_motor_qemu/main/motor_scen_table.c；slot 域按 kind 同 0x05。
+ *       单源 = motor 场景表单源（apps 侧）；slot 域按 kind 同 0x05。
  */
 #define PROTO_TYPE_SCEN       0x06
 /**
@@ -106,7 +106,7 @@
 /* 模块 ID（CMD/ACK payload[0]）
  * 只登记本仓已实现的模块；0x02~0xFE 留给后续模块（如电机）扩展。 */
 #define PROTO_MOD_IMU        0x01   /**< 六轴惯性（本模块的命令族走 0x7D/0x7E） */
-#define PROTO_MOD_STORE      0x20   /**< 参数存储 demo（store_demo 例程，T-006/T-018）：
+#define PROTO_MOD_STORE      0x20   /**< 参数存储模块（T-006/T-018）：
                                      *   pstore 持久化参数读写/清空 */
 
 /* MOD_IMU 功能码（CMD payload[1]，ACK 回显同编号）
@@ -120,7 +120,7 @@
 #define PROTO_IMU_FUNC_GET_DRIFT    0x0D  /**< 读温漂系数：ACK data = 6×float LE（gyro[3], accel[3]） */
 #define PROTO_IMU_FUNC_GET_TC_STATE 0x10  /**< 温补状态快照：ACK data = 28B（布局见下） */
 
-/* MOD_STORE 功能码（store_demo 例程，CMD payload[1]，ACK 回显同编号）
+/* MOD_STORE 功能码（CMD payload[1]，ACK 回显同编号）
  * 语义：读写 pstore 持久化条目（与 IMU 的七命令完全隔离，演示第二模块） */
 #define PROTO_STORE_FUNC_GET    0x01  /**< 读全体条目：ACK data = 22B（布局见下） */
 #define PROTO_STORE_FUNC_SET    0x02  /**< 写条目：params = [count u8][(key_len u8 < 32 key dlen u8 data)×count]，

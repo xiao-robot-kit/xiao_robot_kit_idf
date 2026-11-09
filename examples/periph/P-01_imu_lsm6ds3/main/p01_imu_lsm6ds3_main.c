@@ -18,12 +18,8 @@
  *  ③ I2C 总线扫描：→ "SCAN dev=0x6A"（板面 I2C 唯一器件）。
  *
  * 数据源二选一（编译期宏 P_SIM_IMU，见 main/CMakeLists.txt，默认 1）：
- *  - P_SIM_IMU=1：合成 IMU 数据（testing/imu_sim，零 I2C 依赖，QEMU 可测）；
- *    WHO/SCAN 为合成回显 0x6A。QEMU 档必须走此路（QEMU 无真实 I2C 器件）。
  *  - P_SIM_IMU=0：真 I2C 传感器（复用 port/esp_idf port_i2c + vendored imu 驱动）。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU 第 1 个 -serial 槽，有 chardev 出口；
- *  USB-Serial-JTAG 在 QEMU 无出口）；0（默认）→ USB-Serial-JTAG（真板 USB-C 直连）。
  * 串口参数：115200 8N1（两路一致）。
  */
 
@@ -34,11 +30,7 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "imu/imu_types.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #if P_SIM_IMU
 #include "imu_sim.h"          /* testing/imu_sim：合成源（跨实验共享单源，只读） */
 #else
@@ -73,15 +65,10 @@ enum {
 
 static void app_puts(const char *line)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, line, strlen(line));
-    uart_write_bytes(UART_NUM_0, "\r\n", 2);
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)line, strlen(line),
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
     usb_serial_jtag_write_bytes((const uint8_t *)"\r\n", 2,
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
-#endif
 }
 
 static void app_printf(const char *fmt, ...)
@@ -112,7 +99,6 @@ static int src_init(void)
     s_period_ms = (uint32_t)(1000.0f / sc->sample_rate_hz + 0.5f); /* 100Hz → 10ms */
     app_printf("INFO source=sim %s %uHz", APP_SIM_PRESET,
                (unsigned)sc->sample_rate_hz);
-    /* ① WHO_AM_I（合成回显 0x6A，QEMU 档与真板输出逐字一致） */
     app_printf("WHO 0x6A ok");
     return 0;
 }
@@ -190,19 +176,6 @@ static void i2c_scan(void)
 
 void app_main(void)
 {
-    /* UART0 仅 QEMU 档需要显式初始化（USB-Serial-JTAG 免配置，同 P-00） */
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_param_config(UART_NUM_0, &uc);
-    uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
-#endif
 
     app_printf("OK boot %s v%s | board=%s | mcu=%s %s",
                APP_NAME, APP_VERSION, APP_BOARD, APP_MCU,

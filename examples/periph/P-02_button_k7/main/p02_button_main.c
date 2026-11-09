@@ -10,13 +10,11 @@
  *  - 验收边界：795ms → 短按；805ms → 长按。
  *
  * 数据源二选一（编译期宏 P_SIM_KEY，见 main/CMakeLists.txt，默认 1）：
- *  - P_SIM_KEY=1：合成按键序列（内存事件表），QEMU 可测：
  *      按键 1..3  短按（hold 约 300ms）
  *      按键 4..5  长按（hold 900/805ms，长按到点触发）
  *      注入 4~8ms 抖动脉冲（消抖窗口内吸收，验证无抖动误报）
  *  - P_SIM_KEY=0：真 GPIO11（内部上拉，按下=低）。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU）；0（默认）→ USB-Serial-JTAG（真板）。
  * 串口参数：115200 8N1（两路一致）。
  */
 
@@ -26,11 +24,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #if !P_SIM_KEY
 #include "driver/gpio.h"
 #endif
@@ -53,7 +47,7 @@
 
 static uint32_t s_key_n = 0;          /* 事件序号（1 起） */
 
-/* 事件回放缓冲（SIM 完成态每 1s 重放，供 QEMU 探针晚连场景可见）：
+/* 事件回放缓冲（SIM 完成态每 1s 重放，供晚连探针场景可见）：
  * 行内嵌 boot 头、每次事件行、done 行；重放只读，数量 8 足够。 */
 #define REPLAY_MAX 12
 static char s_replay[REPLAY_MAX][96];
@@ -67,15 +61,10 @@ static void replay_add(const char *line)
 /* ---------------------------------------------------------------- 输出层 */
 static void app_puts(const char *line)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, line, strlen(line));
-    uart_write_bytes(UART_NUM_0, "\r\n", 2);
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)line, strlen(line),
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
     usb_serial_jtag_write_bytes((const uint8_t *)"\r\n", 2,
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
-#endif
 }
 
 static void app_printf(const char *fmt, ...)
@@ -190,18 +179,6 @@ static void key_event(int long_press, uint32_t hold_ms)
 
 void app_main(void)
 {
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_param_config(UART_NUM_0, &uc);
-    uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
-#endif
 #if !P_SIM_KEY
     gpio_config_t io = {
         .pin_bit_mask = 1ULL << KEY_GPIO,

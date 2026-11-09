@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 /**
  * @file    motor_hal_sim.c
- * @brief   电机 QEMU/仿真 port 层实现（契约见 motor_hal_sim.h；纯 C99 零平台依赖）
+ * @brief   电机仿真/SIM port 层实现（契约见 motor_hal_sim.h；纯 C99 零平台依赖）
  *
  * @note    原创律：自研合成模型，零第三方。固件与 host gcc 自检共用本文件
- *          ——两侧行为逐字节一致（QEMU 实跑波形 = host 自检波形的重放）。
+ *          ——两侧行为逐字节一致（SIM 实跑波形 = host 自检波形的重放）。
  */
 
 #include <stddef.h>

@@ -17,12 +17,10 @@
  *
  * 温度源二选一（编译期宏 P_SIM_HEAT，见 main/CMakeLists.txt，默认 1）：
  *  - P_SIM_HEAT=1：合成温度脚本（室温→目标→恒温→过热→恢复全场景，零外设依赖，
- *    QEMU 可测）。真加热 PWM 硬件 HAL 未提供（port 层无 LEDC 端点），本档演示
  *    控制层 + 保护链路全流程（输出开度记录，不驱动真实 D12）。
  *  - P_SIM_HEAT=0：真硬件档——需 LEDC 加热 PWM 端点 + IMU 温度直读，
  *    当前未提供 → 构建期 #error 拒绝（同 P-05 P_SIM_MOTOR=0 纪律，T-017 承接）。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU chardev 出口）；0（默认）→ USB-Serial-JTAG。
  * 串口参数：115200 8N1。
  */
 
@@ -33,16 +31,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #include "imu_heater/imu_heater.h"     /* 控制层：滞回恒温状态机（纯算法） */
 #include "cal/temp_comp.h"             /* 温补对接：温漂补偿应用 */
 
 #if !P_SIM_HEAT
-#error "P-10: 真加热 PWM HAL 未提供（LEDC 端点待 T-017 承接）；QEMU 档必须 P_SIM_HEAT=1"
+#error "P-10: 真加热 PWM HAL 未提供（LEDC 端点待 T-017 承接）；必须 P_SIM_HEAT=1"
 #endif
 
 #define APP_NAME       "P-10_imu_heater_thermo"
@@ -68,19 +62,12 @@ static bool s_replay_ok = false;
 
 static void output_raw(const char *s)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, s, strlen(s));
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)s, strlen(s),
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
-#endif
 }
 
 static void output_flush(void)
 {
-#if EXP_QEMU_UART
-    uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(200));
-#endif
 }
 
 static void event_log(const char *fmt, ...)
@@ -171,18 +158,6 @@ static void heater_step(int r, float temp)
 
 void app_main(void)
 {
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_driver_install(UART_NUM_0, 2048, 2048, 0, NULL, 0);
-    uart_param_config(UART_NUM_0, &uc);
-#endif
 
     event_log("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
               APP_BOARD, APP_MCU);

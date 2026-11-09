@@ -4,14 +4,14 @@
 
 /**
  * @file    motor_hal_sim.h
- * @brief   电机 QEMU/仿真 port 层：PWM RAM 合成 HAL + 合成编码器 HAL（零平台依赖）
+ * @brief   电机仿真/SIM port 层：PWM RAM 合成 HAL + 合成编码器 HAL（零平台依赖）
  *
  * @note    与 imu_hal_i2c.h 分层同构（依赖单向：本头只 include 电机库契约头，
- *          不 include 任何平台头）——固件（exp_motor_qemu）与 host gcc 自检
+ *          不 include 任何平台头）——固件与 host gcc 自检
  *          （testing/exp_motor_sim_main.c）编译同一份实现，行为完全一致。
  * @note    PWM 合成：timer_config 按「载波频率」登记一个 RAM 定时器记录，
  *          channel_set_duty 只写记录内的 duty 数组——无任何硬件访问
- *          （QEMU esp32s3 无 LEDC 模型，演示固件的输出面就是本合成存储）。
+ *          （esp32s3 无 LEDC 模型，演示固件的输出面就是本合成存储）。
  * @note    编码器合成（合成计数回灌）：plant = 一阶滞后模型
  *          rpm → (duty_fwd − duty_rev)·rpm_per_duty，τ 秒滞后；
  *          count 按 rpm/60·cpr·dt 累积（每次 encoder_read 推进一个 dt）。

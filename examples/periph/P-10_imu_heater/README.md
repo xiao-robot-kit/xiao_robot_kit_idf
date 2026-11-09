@@ -1,6 +1,6 @@
 # P-10 imu_heater_thermo — IMU 恒温加热闭环（D12 PWM, 目标 ±2°C + 超温保护 + 温补对接）
 
-> 类目：外设例程（periph）· Wave 3 ｜ 任务卡 T-027 ｜ 状态：**构建 + QEMU 断言已收口，真板未验证**（无板 + 加热 PWM HAL 未提供，联调项待 T-017）
+> 类目：外设例程（periph）· Wave 3 ｜ 任务卡 T-027 ｜ 状态：**构建已收口，真板未验证**（无板 + 加热 PWM HAL 未提供，联调项待 T-017）
 
 ## 一、覆盖点（任务书 §3 P-10）
 
@@ -19,21 +19,18 @@
 
 > **HAL 缺口（显式声明）**：真加热 PWM 输出端点（LEDC 单通道）port 层未提供——
 > `P_SIM_HEAT=0` 构建期 `#error` 拒绝（同 P-05 P_SIM_MOTOR=0 纪律）。
-> QEMU 档演示**控制层 + 保护链路**全流程（温度合成 + 开度计算/记录），物理 PWM 驱动待 T-017。
+> SIM 档演示**控制层 + 保护链路**全流程（温度合成 + 开度计算/记录），物理 PWM 驱动待 T-017。
 
 ## 三、双数据源宏（编译期，见 main/CMakeLists.txt）
 
 - `P_SIM_HEAT=1`（默认）：合成温度场景（室温 30°C → 目标 45°C → 恒温窗晃动 → 61°C 过热 → 63°C 触发 WDT → 恢复再恒温），实测状态机闭环
 - `P_SIM_HEAT=0`：真硬件档——`#error`（加热 PWM HAL + IMU 温度直读未提供）
-- `EXP_QEMU_UART=1`：输出层 UART0（QEMU chardev 出口）；默认 USB-Serial-JTAG（真板）
 
 ## 四、验证记录
 
 | 验证 | 命令 | 结果 |
 |---|---|---|
 | default 档构建 | `run.bat` | ✅ bin 170,336 B（2026-11-08 实测） |
-| QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_HEAT=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 191,168 B（2026-11-08 实测） |
-| QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
 ## 五、组件对接（P-10 → xiao_* 组件）
 
@@ -46,7 +43,6 @@
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `D:\esp\v6.1\esp-idf` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `D:\Espressif\python_env\idf6.1_py3.11_env` | 同上 |
 | esp32s3 工具链 | 由 `export.bat` 注入 | 激活 IDF 环境失败即退出 |
 
@@ -55,7 +51,6 @@
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU | bash（Git for Windows / MSYS） | `run_qemu.bat` 检查 `where bash`，缺失提示安装并退出 |
 
 ### 硬件依赖（Hardware，真板档）
 

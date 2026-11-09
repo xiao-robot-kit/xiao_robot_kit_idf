@@ -5,7 +5,6 @@
  *
  * 链路：motor 组件（motor.servo.sg90 @ pwm.servo.50，底版 500~2500us/0~180°）
  *       × 4 路（单定时器 4 通道，SERVO 单臂占 1 通道）→ 合成 PWM 存储回读
- *       （examples/_shared/motor_hal_sim.c）→ 文本遥测 → UART0（QEMU 档）/
  *       USB-Serial-JTAG（真板档）。
  *
  * 演示两件事（有限序列，事件回放每 1s 重放全量；P-02 模式）：
@@ -21,14 +20,11 @@
  *       受限，多舵机堵转会拉垮电压 → 例程硬性电压监测联动告警（本文件 B 段）；
  *       舵机空载峰流预算约 4×250mA=1A < USB 5V@1A，堵转单舵 0.9A 立超——故
  *       告警即全停（停摆护轨），不等二次超时。
- *   v_bat 采样面：P_ADC_RAW=1 合成档 = 演示曲线（无电池跑通告警链路，QEMU 可
  *       断言 WARN 行）；P_ADC_RAW=0 真板档 = ADC2_CH5（GPIO16，100K:30K 分压，
  *       换算 Vbat = Vadc×130/30，同 P-04）。
  *
  * 宏契约（CMake 定义，两态显式）：
- *   P_SIM_MOTOR   1=合成 HAL（默认，QEMU 可测）；0=真硬件 LEDC HAL——未提供，
  *                 C 侧 #error 拒绝（不静默编出假硬件固件，ERR-004 纪律）。
- *   EXP_QEMU_UART 1=遥测出口 UART0（QEMU 第 1 个 -serial 槽）；0=USB-Serial-JTAG。
  *   P_ADC_RAW      1=合成电压演示曲线；0=真 ADC2_CH5 采样（真板，需 esp_adc）。
  */
 #include <stdio.h>
@@ -53,9 +49,6 @@
 #if P_SIM_MOTOR == 0
 #error "P_SIM_MOTOR=0: real LEDC HAL not provided by port yet (ERR-004) — use sim"
 #endif
-#ifndef EXP_QEMU_UART
-#error "EXP_QEMU_UART undefined: set 1=UART0 (QEMU) or 0=USB-Serial-JTAG (board)"
-#endif
 #ifndef P_ADC_RAW
 #error "P_ADC_RAW undefined: set 1=sim voltage demo or 0=real ADC (board)"
 #endif
@@ -79,11 +72,7 @@ static const float s_angle_table[ANGLE_TABLE_N] = { 0.0f, 90.0f, 180.0f, 90.0f, 
 #define S_REPLAY_MAX         48
 #define S_REPLAY_LEN         96
 
-#if EXP_QEMU_UART == 1
 #define EXP_UART_NUM         UART_NUM_0
-#else
-#define EXP_UART_NUM         UART_NUM_0
-#endif
 
 /* ---- 引脚表（任务书 §3.1：D15/D9/D0/D8 = S1~S4） ---- */
 static const int s_pins[SERVO_N] = { 15, 9, 0, 8 };
@@ -120,24 +109,10 @@ static void output_log(const char *line)
 
 static void uart_init(void)
 {
-#if EXP_QEMU_UART == 1
-    uart_config_t cfg = {
-        .baud_rate = SAFE_BAUD,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-    };
-    if (uart_driver_install(EXP_UART_NUM, 256, 0, 0, NULL, 0) != ESP_OK) return;
-    uart_param_config(EXP_UART_NUM, &cfg);
-    uart_vfs_dev_use_driver(EXP_UART_NUM);
-#else
     (void)0;   /* 真板档 USB-Serial-JTAG 由 esp_console 接管，app_puts 直推 */
-#endif
 }
 
 #if P_ADC_RAW == 1
-/* ==== 合成电压演示曲线档（无电池跑通告警链路，QEMU 可断言 WARN 行） ==== */
 static float sample_vbat_us(void)
 {
     return s_vbat_now;
@@ -290,8 +265,8 @@ void app_main(void)
 
     char boot[S_REPLAY_LEN];
     snprintf(boot, sizeof(boot),
-             "OK boot P-07_servo_pwm n=%u freq=%u sim_motor=1 adc_raw=%d qemu_uart=%d",
-             (unsigned)SERVO_N, (unsigned)SERVO_FREQ, P_ADC_RAW, EXP_QEMU_UART);
+             "OK boot P-07_servo_pwm n=%u freq=%u sim_motor=1 adc_raw=%d",
+             (unsigned)SERVO_N, (unsigned)SERVO_FREQ, P_ADC_RAW);
     output_log(boot);
 
     /* ---- 装配（timer → 4 × motor preset → 无 plant（SERVO 无编码器）） ---- */

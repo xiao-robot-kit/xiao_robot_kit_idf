@@ -42,8 +42,6 @@ HEART 2 uptime=2 s
 # 真板（USB 已插）
 run.bat COMx        # 构建 + 烧录 + 串口监控（idf.py flash monitor）
 
-# QEMU 无板验证（EXP_QEMU_UART=1 → UART0 chardev 出口）
-run_qemu.bat        # 构建 EXP_QEMU_UART 档 → 起 QEMU 收 15s 日志 → 必杀
 ```
 
 ## 已知限制
@@ -52,13 +50,11 @@ run_qemu.bat        # 构建 EXP_QEMU_UART 档 → 起 QEMU 收 15s 日志 → �
   心跳行保证状态可见。
 - Task WDT：默认 5s 看门狗已在 FreeRTOS 空闲任务喂——心跳循环本身不触发
  （10min 连跑无重启即验收）。
-- QEMU 档 UART0 与 USB-Serial-JTAG 二选一由 `EXP_QEMU_UART` 编译宏决定；
-  真板默认 0，QEMU 默认 1。
+  真板默认 0
 
 ## 提交自证（本轮）
 
 - 构建：`idf.py build` 通过（详见本日提交记录）
-- QEMU 日志链路：`run_exp_sim.sh` 收 15s 心跳行
 - 真板 10min 连跑：**未验证**（待 P-00 上板实测补齐，任务书 §5.2 纪律）
 ## 依赖声明（Dependencies）
 
@@ -66,7 +62,6 @@ run_qemu.bat        # 构建 EXP_QEMU_UART 档 → 起 QEMU 收 15s 日志 → �
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `%IDF_PATH%（默认 C:\esp\v6.1\esp-idf）` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `%IDF_PYTHON_ENV_PATH%（默认 C:\Espressif\python_env\idf6.1_py3.11_env）` | 同上 |
 | esp32s3 工具链 | 由 `export.bat` 注入 | 激活 IDF 环境失败即退出 |
 
@@ -75,8 +70,6 @@ run_qemu.bat        # 构建 EXP_QEMU_UART 档 → 起 QEMU 收 15s 日志 → �
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU（`run_qemu.bat`） | `%QEMU_XTENSA%（内部 CI 注入）` | bat 启动检查，缺失打印 `[ERR] QEMU xtensa binary not found` 并退出 |
-| QEMU（内部 CI） | 见上：QEMU 引导与文本断言在私仓 CI 管道运行，公开副本不包含 |
 
 ### 硬件依赖（Hardware，真板档）
 

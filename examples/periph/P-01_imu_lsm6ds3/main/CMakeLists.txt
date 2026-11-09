@@ -10,20 +10,14 @@ set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
 set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
-# P_SIM_IMU: 1 (default) = synthetic IMU data (zero I2C deps, QEMU-testable,
 #              WHO/SCAN are synthesized echoes)
 #             0 = real I2C sensor (LSM6DS3TR-C @0x6A via _shared I2C endpoint)
-# QEMU builds (no real I2C device in QEMU) must use P_SIM_IMU=1
 if(NOT DEFINED P_SIM_IMU)
     set(P_SIM_IMU 1)
 endif()
 
-# EXP_QEMU_UART: 1 = text output on UART0 (QEMU: USB-Serial-JTAG has no chardev
 #   path; UART0 = first -serial slot has a chardev exit);
 #   0 (default) = USB-Serial-JTAG (real board)
-if(NOT DEFINED EXP_QEMU_UART)
-    set(EXP_QEMU_UART 0)
-endif()
 
 set(P01_SRCS "p01_imu_lsm6ds3_main.c")
 set(P01_INCS
@@ -53,4 +47,4 @@ add_subdirectory(${LIBS_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/xiao_libs)
 target_link_libraries(${COMPONENT_LIB} PUBLIC xiao_imu)
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC
-    P_SIM_IMU=${P_SIM_IMU} EXP_QEMU_UART=${EXP_QEMU_UART})
+    P_SIM_IMU=${P_SIM_IMU})

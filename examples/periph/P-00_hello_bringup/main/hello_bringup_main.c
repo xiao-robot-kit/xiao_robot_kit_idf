@@ -10,7 +10,6 @@
  *
  * 验收（任务书 §3 P-00）：上电 1s 内串口打出版本/复位原因；连跑 10min 无重启。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU 第 1 个 -serial 槽）；0（默认）→ USB-Serial-JTAG。
  * 串口参数：115200 8N1（两路一致）。
  */
 
@@ -20,11 +19,7 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "esp_system.h"        /* esp_reset_reason()（v6.1：声明在 esp_system.h，无独立 esp_reset_reason.h） */
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 
 #define APP_NAME        "P-00_hello_bringup"
 #define APP_VERSION     "0.1.0"
@@ -36,13 +31,8 @@
 /* UART0 与 USB-Serial-JTAG 共用的输出原语（print → either 层） */
 static void app_puts(const char *line)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, line, strlen(line));
-    uart_write_bytes(UART_NUM_0, "\r\n", 2);
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)line, strlen(line), pdMS_TO_TICKS(100));
     usb_serial_jtag_write_bytes((const uint8_t *)"\r\n", 2, pdMS_TO_TICKS(100));
-#endif
 }
 
 static void app_printf(const char *fmt, ...)
@@ -75,18 +65,6 @@ static const char *reset_reason_str(esp_reset_reason_t r)
 
 void app_main(void)
 {
-    /* UART0 仅 QEMU 档需要显式初始化（USB-Serial-JTAG 免配置） */
-#if EXP_QEMU_UART
-    uart_config_t cfg = {
-        .baud_rate = APP_UART_BAUD,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-    };
-    uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0);
-    uart_param_config(UART_NUM_0, &cfg);
-#endif
 
     esp_reset_reason_t reason = esp_reset_reason();
 
@@ -103,7 +81,6 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(APP_HEARTBEAT_MS));
         uint64_t sec = (esp_timer_get_time() - t0) / 1000000ull;
         app_printf("HEART %u uptime=%llu s", (unsigned)he++, (unsigned long long)sec);
-        /* QEMU 文本断言窗口：探针可能晚连错过 boot 头，每 10s 重申一次版本头（验收仍要求上电 1s 内首打） */
         if (he % 10 == 0) {
             app_printf("OK boot %s v%s | board=%s | mcu=%s", APP_NAME, APP_VERSION,
                        APP_BOARD, APP_MCU);

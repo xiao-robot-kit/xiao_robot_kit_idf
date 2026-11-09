@@ -17,13 +17,10 @@
  *  ③ 每轮汇总 + 连续 N 轮零异常 → "SCAN DONE run=N scan=PASS(n)"。
  *
  * 扫描源二选一（编译期宏 P_SIM_SCAN，见 main/CMakeLists.txt，默认 1）：
- *  - P_SIM_SCAN=1：合成扫描回显（零 I2C 依赖，QEMU 可测，dev=0x6A sim echo）；
  *    新增测试性 NEW 地址 0x40（演示地址表管理：表外地址需登记）。
  *  - P_SIM_SCAN=0：真 I2C 扫描（复用 port/esp_idf port_i2c + esp_port_i2c_probe，
  *    任意 0x03–0x77 地址探测，非单器件只读——probe 不建器件句柄）。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU 第 1 个 -serial 槽，有 chardev 出口；
- *  USB-Serial-JTAG 在 QEMU 无出口）；0（默认）→ USB-Serial-JTAG（真板 USB-C 直连）。
  * 串口参数：115200 8N1（两路一致）。
  */
 
@@ -34,11 +31,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #if P_SIM_SCAN
 /* 合成扫描：无平台依赖 */
 #else
@@ -81,19 +74,12 @@ static bool          s_replay_ok = false;
 
 static void output_raw(const char *s)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, s, strlen(s));
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)s, strlen(s),
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
-#endif
 }
 
 static void output_flush(void)
 {
-#if EXP_QEMU_UART
-    uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(200));
-#endif
 }
 
 /** @brief 事件统一出口：入回放缓冲 + 实时输出（P-02 模式） */
@@ -165,20 +151,7 @@ static void scan_round(int round)
 
 void app_main(void)
 {
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_driver_install(UART_NUM_0, 2048, 2048, 0, NULL, 0);
-    uart_param_config(UART_NUM_0, &uc);
-#endif
 
-    /* 版本/上电信息（与 P-00 同构，QEMU 断言锚点） */
     event_log("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
               APP_BOARD, APP_MCU);
 
@@ -190,7 +163,7 @@ void app_main(void)
     }
     event_log("I2C bus 400kHz ready (SDA=D4/GPIO5 SCL=D5/GPIO6)");
 #else
-    event_log("I2C bus SIM echo (no hw, QEMU-safe)");
+    event_log("I2C bus SIM echo (no hw)");
 #endif
 
     int64_t t0 = esp_timer_get_time();

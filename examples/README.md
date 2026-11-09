@@ -1,22 +1,16 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Examples
 
-**28 standalone ESP-IDF projects**, grouped by *what hardware they exercise* —
-not by experiment number. Every project is its own `idf.py build` target and
-links the `xiao_*` library targets from the repository root `CMakeLists.txt`;
-no project copies component sources.
+**13 个板载外设例程**（`periph/P-XX_*`），一外设一个工程——回答「这颗器件
+能不能动」。每个例程是独立的 `idf.py build` 目标，链接仓根 `CMakeLists.txt`
+的 `xiao_*` 库目标，不复制组件源码。
 
 | Group | Count | What it is for |
 | --- | --- | --- |
-| [Board peripherals](#1-board-peripheral-examples-13) (`periph/`) | **13** | one example per on-board peripheral — the "make sure the hardware works" layer |
-| [IMU pipeline](#2-imu-pipeline-5-stages-imu) (`imu/`) | **5** | five stages stacked on the same link: raw → calibrated → euler → quaternion → trajectory data source |
-| [Motor control](#3-motor-control-8-projects-motor) (`motor/`) | **8** | one control strategy per project: open loop → encoder → PID → S-curve → nested timers |
-| [Persistence](#4-persistence-1-project) (`store_demo/`) | **1** | parameters that survive power loss |
-| [Quickstart template](#5-quickstart-template-1-project-idf) (`idf/imu_quickstart/`) | **1** | minimal ~20-line `main.c` to copy into your own project |
-| `_shared/` | sources | port layer (I2C endpoint, flash/NVS backends) + synthetic data sources, compiled *into* the projects |
+| [Board peripherals](#1-board-peripheral-examples-13) (`periph/`) | **13** | 每个板载外设一个例程——「确认硬件能用」这一层 |
+| `_shared/` | sources | 端口层（I2C 端点、flash 后端）+ 合成数据源，编进各例程 |
 
-Recommended order for a first pass over the board: **P-00 → P-01 → P-02 → P-03**
-(see [suggested routes](#6-suggested-routes)).
+推荐首次过板的顺序：**P-00 → P-01 → P-02 → P-03**（见[建议路径](#5-suggested-routes)）。
 
 ---
 
@@ -40,7 +34,7 @@ grep for.
 | I2C expansion ports | P-08 | [`P-08_i2c_scan_ports`](periph/P-08_i2c_scan_ports) | Full 0x03–0x77 probe of the Grove ports on the *same* bus as the on-board IMU + address-table bookkeeping (`KNOWN` vs `NEW`) | J11/J12 (shared SDA=D4, SCL=D5) | ESP-IDF `i2c_master` | `SCAN dev=0x6A kind=KNOWN`, `SCAN DONE run=5 scan=PASS` |
 | Grove UART | P-09 | [`P-09_uart_passthrough`](periph/P-09_uart_passthrough) | 115200 8N1 loopback / passthrough, data plane on UART0 while logs stay on USB-CDC, per-round CRC + loss stats | J10: D6 (UART0 TX), D7 (UART0 RX) | ESP-IDF `uart` | `LOOP n=1 tx=1000 rx=1000 loss=0 crc=OK` |
 | IMU heater | P-10 | [`P-10_imu_heater`](periph/P-10_imu_heater) | Closed-loop heater (`thermo45`: target 45 °C ±2, overheat 60) with soft watchdog, wired into `temp_comp` bias compensation | D12/GPIO12 → R76 100R → Q1 NMOS | `xiao_imu_heater` + `xiao_calibration` | `HT cfg preset=thermo45 target=…`, per-round `HT  r=… st=HOLD d=0.12 tc=1 bias=(…)`, `WDT fail seq=3 … forced duty=0`, `TC init t_ref=25.0` |
-| Flash parameter partition | P-11 | [`P-11_pstore_params`](periph/P-11_pstore_params) | Multi-item registry (`motor.cal`, `servo.center`) → CRC32 frame → atomic write/load; QEMU power-kill then boot again and compare | custom `store` partition (`partitions.csv`) | `xiao_pstore` | `P11 SET ok`, then after the power cycle `P11 GET … MATCH=1` (`MATCH=0 MISMATCH params=…` on failure) |
+| Flash parameter partition | P-11 | [`P-11_pstore_params`](periph/P-11_pstore_params) | Multi-item registry (`motor.cal`, `servo.center`) → CRC32 frame → atomic write/load; power-cycle then boot again and compare | custom `store` partition (`partitions.csv`) | `xiao_pstore` | `P11 SET ok`, then after the power cycle `P11 GET … MATCH=1` (`MATCH=0 MISMATCH params=…` on failure) |
 | Spare pins | P-12 | [`P-12_spare_gpio_tpxx`](periph/P-12_spare_gpio_tpxx) | The only spare GPIOs on the board: MTDI/MTDO exercised as plain I/O, both roles, read-back compared | TP20 = MTDI = GPIO41, TP21 = MTDO = GPIO42 (**test points, requires flying leads**) | ESP-IDF `gpio` | `SPARE done mismatch=(0,0)` → `VERDICT PASS` |
 
 **Counts by peripheral group:** serial/bring-up 1 · I2C sensors & ports 2 (IMU
@@ -52,110 +46,59 @@ storage 1 (P-11) · spare 1 (P-12) · serial data path 1 (UART P-09) — **total
 > above. That is why P-12 has to fly-lead TP20/TP21, and why examples never
 > invent extra pins.
 
-## 2. IMU pipeline: 5 stages (`imu/`)
-
-Same link, one capability added per stage — so a failure localises to the stage
-you just added. `imu/common/` holds the shared command layer (`cal_cmd.c/h`)
-they all use.
-
-| Stage | Project | Adds on top of the previous one | Frame out |
-| --- | --- | --- | --- |
-| 1 | [`exp1_raw`](imu/exp1_raw) | The baseline: probe → `imu.raw.104` preset → g / dps in physical units. Nothing else | `0x01` IMU_SAMPLE |
-| 2 | [`exp2_calib`](imu/exp2_calib) | Gyro bias from N frames (gravity axis auto-detected) → debias → temperature-step bias recompute → **persist via `xiao_pstore`**, so no re-calibration after reboot | `0x02` IMU_CAL |
-| 3 | [`exp3_euler`](imu/exp3_euler) | Mahony complementary filter → **euler angles (ZYX, rad)** | `0x03` EULER |
-| 4 | [`exp4_quat`](imu/exp4_quat) | Same filter, **quaternion** output. Euler is computed *on the host* from the quaternion — one solver, no duplicate math in firmware | `0x04` QUAT |
-| 5 | [`exp5_trajectory`](imu/exp5_trajectory) | Two frames per tick (quaternion + raw specific force) as the data source for host-side trajectory reconstruction | `0x04` + `0x01` |
-
-exp3 vs exp4 is a **controlled A/B**: same samples, same presets, same filter —
-the only variable is the attitude representation.
-
-## 3. Motor control: 8 projects (`motor/`)
-
-| Project | Control面 | Scenario |
-| --- | --- | --- |
-| [`exp_motor_pwm`](motor/exp_motor_pwm) | open-loop PWM | duty staircase 0/25/50/75/100 %, 2 s each — shows monotonicity and the dead zone |
-| [`exp_motor_dc`](motor/exp_motor_dc) | H-bridge (signed duty) | +50 % ↔ −50 % every 2 s; the sign bit *is* the direction |
-| [`exp_motor_servo`](motor/exp_motor_servo) | servo position | five-point calibration 0/45/90/135/180 ° up then down — hysteresis / repeatability |
-| [`exp_motor_enc`](motor/exp_motor_enc) | encoder speed loop | 30 ↔ 90 rpm steps, 4 s per segment, synthetic first-order plant |
-| [`exp_motor_pidscan`](motor/exp_motor_pidscan) | PID grid scan | 3×3 `kp × ki` grid over the same step, so you can compare overshoot / settling side by side |
-| [`exp_motor_scurve`](motor/exp_motor_scurve) | S-curve trajectory | 7-phase constant-jerk point-to-point on both slots; velocity output feeds the controller as feed-forward |
-| [`exp_motor_nested`](motor/exp_motor_nested) | timer nesting | two motors sharing one 20 kHz timer (ch0/ch1) + a servo on an independent 50 Hz timer — channel isolation |
-| [`exp_motor_qemu`](motor/exp_motor_qemu) | all four kinds + selector | runs a demo on boot, then `SCEN <n>` over UART0 switches kind at runtime — the one to use with the QEMU harness |
-
-All eight emit `0x05` MOTOR telemetry at a 500 Hz control loop.
-
-## 4. Persistence: 1 project
-
-[`store_demo`](store_demo) — `xiao_pstore` on a raw flash partition, no IMU or
-calibration dependency: write params → power-cycle → read back identical. Ships
-with a QEMU power-cycle harness (`testing/qemu_powercycle.py`).
-
-## 5. Quickstart template: 1 project (`idf/`)
-
-[`idf/imu_quickstart`](idf/imu_quickstart) — the ~20-line `main.c` used by the
-tutorial: register your glue table, link the libraries, stream six-axis samples.
-Copy this into your own project rather than starting from P-01.
-
-## 6. Suggested routes
-
-| You want | Path |
-| --- | --- |
-| Confirm the board is alive | P-00 → P-01 → P-02 → P-03 |
-| Add your own I2C sensor | P-08 → P-01 (preset table) → P-09 (data out) |
-| Make the IMU trustworthy | `imu/exp1_raw` → `exp2_calib` (bias + persistence) → `exp3_euler` |
-| Close a motion loop | P-05 → P-06 → `motor/exp_motor_enc` → `exp_motor_pidscan` → `exp_motor_scurve` |
-| Keep parameters across power loss | P-11 → `store_demo` |
-
-## 7. Running one
+## 2. Running one
 
 ```bash
 cd examples/periph/P-01_imu_lsm6ds3
 idf.py set-target esp32s3
 idf.py build                 # build only
 run.bat COM5                 # Windows: build + flash + monitor
-run_qemu.bat                 # Windows: build the simulated variant only
 ```
 
-`run.bat` / `run_qemu.bat` set `IDF_PATH` / `IDF_PYTHON_ENV_PATH` themselves when
-missing. Build one project at a time — `idf.py build` and `idf.py reconfigure`
-share `build/` and will produce bogus failures if run concurrently.
+`run.bat` sets `IDF_PATH` / `IDF_PYTHON_ENV_PATH` itself when missing. Build one
+project at a time — `idf.py build` and `idf.py reconfigure` share `build/` and
+will produce bogus failures if run concurrently.
 
-## 8. Real hardware vs simulated data
+## 3. 数据源（默认合成，真板可切真实）
 
-Every project ships **two data sources**, selected at build time. The default is
-the simulated one, so all examples build and run without the board attached.
-
-| Macro | `1` (default) | `0` |
-| --- | --- | --- |
-| `EXP_SIM` (deep experiments) / `P_SIM_*` (peripherals) | synthetic samples — no sensor, motor or heater needed; runs under QEMU | real hardware source. Where a HAL is not published yet (motor PWM, heater PWM) the build is **rejected at compile time on purpose**, instead of silently shipping a fake-hardware firmware |
-| `EXP_QEMU_UART` | frames + logs on UART0 (QEMU / serial harness) | logs on USB-Serial-JTAG (real board over USB-C) |
+每个例程默认用**合成数据源**（`P_SIM_*` 宏），无板也能编译验证；接真板时切
+真实数据源（`P_SIM_* = 0`）。电机 / 存储系的真实 HAL 未随本仓发布，切 `0` 会
+在编译期显式拒绝（不会静默编出「假硬件」固件）。
 
 ```bash
-idf.py -DEXP_SIM=0 build      # deep experiments: real hardware path
-idf.py -DP_SIM_IMU=0 build    # peripherals: per-project macro name, see its README
+idf.py -DP_SIM_IMU=0 build     # 例：P-01 切真实 I2C 数据源
 ```
 
-## 9. Shared sources (`_shared/`)
+## 4. Shared sources (`_shared/`)
 
 Not a project. Compiled into the examples that need it: the ESP-IDF I2C endpoint,
-flash + NVS `pstore` backends, and the synthetic sources (IMU, motor HAL,
-encoder). Changing a file here affects every example — the built-in variant
-switches keep the real/simulated boundary explicit.
+flash `pstore` backend, and the synthetic sources (IMU, motor HAL). Changing a
+file here affects every example — the built-in variant switches keep the
+real/simulated boundary explicit.
 
-## 10. Wire format
+## 5. Suggested routes
+
+| You want | Path |
+| --- | --- |
+| Confirm the board is alive | P-00 → P-01 → P-02 → P-03 |
+| Add your own I2C sensor | P-08 → P-01 (preset table) → P-09 (data out) |
+| Make it move | P-05 → P-06 → P-07 |
+| Keep parameters across power loss | P-11 |
+
+## 6. Wire format
 
 Examples that speak the serial protocol use `xiao_proto`; the byte layout is
 defined once in [`src/proto/include/proto/frame.h`](../src/proto/include/proto/frame.h) — SOF/LEN/TYPE/SEQ/
 PAYLOAD/CRC8, frame types `0x01`…`0x7F`. That header is the contract; do not
 duplicate it in a doc or a sketch.
 
-## 11. Verification status
+## 7. Verification status
 
 Per-example detail (acceptance criteria, console anchors, what to change) lives
-in each project's README. Build status:
+in each project's README. Build status (ESP-IDF v6.1, target esp32s3):
 
-- `idf.py reconfigure` — **28/28 projects pass** (ESP-IDF v6.1, target esp32s3)
-- full build verified — P-00, P-01, P-05, P-11, `imu/exp1_raw`, `store_demo`
+- `idf.py reconfigure` — **13/13 pass**（本轮删除算法例程后由 PM 复跑）
+- full build verified — P-00, P-01, P-05, P-11
 - remaining projects share the same template but were **not** individually built
   in the last release window; re-run before trusting a green checkmark
 - **on-board electrical behaviour is not verified in this repository** — no

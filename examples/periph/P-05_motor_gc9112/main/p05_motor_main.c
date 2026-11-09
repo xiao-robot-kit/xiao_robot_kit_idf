@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /**
  * @file    p05_motor_main.c
- * @brief   P-05 motor_gc9112：双路 GC9112 电机驱动例程（QEMU 文本遥测版）
  *
  * @note    类目：外设例程（periph）——有限序列演示 + 事件回放（P-02 模式）：
  *          序列 = M1/M2 各自 正转(+50%)→反转(−50%)→停(0)→调速(±25/50/75/100% 扫
@@ -10,14 +9,12 @@
  *          归一化占空 −1..+1，符号=桥向）；桥输出回读 sim_pwm_bridge_duty（物理
  *          输出面 = 合成 PWM 存储），断言两臂恰一非零（H 桥直通零容忍）。
  * @note    双宏契约：P_SIM_MOTOR=1 合成 HAL（唯一实现）；置 0 = 构建期 #error
- *          （真板 LEDC HAL 未提供）。EXP_QEMU_UART=1 → UART0；0 → USB-Serial-JTAG。
  * @note    真板未验证（任务卡标注）：D1/D2=M1 IN1/IN2、D19/D18=M2 IN1/IN2，
  *          GC9112 单 H 桥，20kHz 载波，MOTOR_5V 电源轨（与舵机共轨，见任务书 5.3）。
  * @note    观察点：每档 = 目标占空 → poll 驱动桥输出 → sim 回读两臂；调速扫档
  *          每股记录 (duty, rpm_model)——rpm 合成：duty×3600（12V N20 全速示例），
  *          真板上该曲线由 P-06 encoder 实测替换（本为例程演示，rpm 标注 model）。
  * @note    事件回放（S_REPLAY_MAX=32×80）：boot 行 + 每档 1 行 + CURVE + DONE；
- *          完成态每 1s 重放全部——QEMU TCP 探针何时连上都拿得到全序列。
  */
 
 #include <stdio.h>
@@ -34,12 +31,7 @@
 #error "P-05: 真硬件 LEDC 电机 HAL 未提供（本例程输出面 = motor_hal_sim 合成存储）"
 #endif
 
-/* ── 输出面：EXP_QEMU_UART=1 → UART0（QEMU 第一 serial 槽）；0 → USB-Serial-JTAG ── */
-#if EXP_QEMU_UART
 #define P05_OUT_UART  UART_NUM_0
-#else
-#define P05_OUT_UART  UART_NUM_0
-#endif
 
 /* ── 例程常量（参数零写死，全在此段） ───────────────────────────────────── */
 #define POLL_MS       2          /* 500Hz 控制环 */
@@ -111,12 +103,6 @@ static void app_puts(const char *s)
 /* ── 装配（P-00 同款：display 先断言核心，失败即停不静默） ─────────────────── */
 static int p05_init(void)
 {
-    /* 输出口（QEMU 档 UART0 安装驱动；真板 USB 由 app_puts 直推） */
-#if EXP_QEMU_UART
-    esp_err_t rc = uart_driver_install(P05_OUT_UART, 256, 0, 0, NULL, 0);
-    if (rc != ESP_OK) return -1;
-    uart_vfs_dev_use_driver(P05_OUT_UART);
-#endif
 
     /* 注册合成 PWM HAL（进程级一次） */
     if (pwm_hal_register(&sim_pwm_hal) != 0) return -1;

@@ -16,7 +16,6 @@
  *   alarm 低电告警（≤3.30V 置 1，预设 v_alarm）
  *
  * 验收口径（任务书 P-04）：真板接电池 → 电压/SOC 数值合理、随放电单调下降、
- * 低电告警生效；无电池 SIM 档（QEMU）验证换算链路双向正确。
  */
 
 #include <stdio.h>
@@ -34,12 +33,10 @@ static const char *TAG = "p04";
 #define P04_PERIOD_S    1
 
 #if P_ADC_RAW
-/* ==== 合成 ADC 原始值档（无电池跑通链路；QEMU/SIM 用） ==== */
 /* 模拟放电：4.2V → 3.0V 逐步下降，覆盖全 SOC 区间 */
 static uint32_t sim_raw_step(uint32_t tick)
 {
-    /* 预设 4.2→3.0 线性下降，走 20 步（每步约 0.06V），alarm(≤3.3V) 在第 ~15s 触发，
-     * 20s QEMU 断言窗口内可见；走完回满电重来 */
+    /* 预设 4.2→3.0 线性下降，走 20 步（每步约 0.06V），alarm(≤3.3V) 在第 ~15s 触发，走完回满电重来 */
     const float vref    = 3.3f;
     const int   scale   = (1 << 12) - 1;              /* 12bit */
     const float ratio   = (100.0f + 30.0f) / 30.0f;   /* 分压比 4.3333 */
@@ -109,22 +106,6 @@ static esp_err_t sample_battery_raw(uint32_t *raw)
 }
 #endif
 
-#if P_QEMU_UART
-#include "driver/uart.h"
-static void console_init(void)
-{
-    /* QEMU 档：UART0 115200 8N1 显式初始化（USB-Serial-JTAG 无 chardev 出口） */
-    uart_config_t u = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-    };
-    uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
-    uart_param_config(UART_NUM_0, &u);
-}
-#else
 #include "driver/usb_serial_jtag.h"
 static void console_init(void)
 {
@@ -132,19 +113,12 @@ static void console_init(void)
     usb_serial_jtag_driver_config_t u = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
     usb_serial_jtag_driver_install(&u);
 }
-#endif
 
-/* 输出层：与 P-00 同构——UART0(QEMU) / USB-Serial-JTAG(真板) 显式路由，
- * 防 printf 走默认 console 在 QEMU 下无 chardev 出口而丢输出 */
+/* 输出层：与 P-00 同构——USB-Serial-JTAG 控制台；防 printf 走默认 console 丢输出 */
 static void app_puts(const char *line)
 {
-#if P_QEMU_UART
-    uart_write_bytes(UART_NUM_0, line, strlen(line));
-    uart_write_bytes(UART_NUM_0, "\r\n", 2);
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)line, strlen(line), pdMS_TO_TICKS(100));
     usb_serial_jtag_write_bytes((const uint8_t *)"\r\n", 2, pdMS_TO_TICKS(100));
-#endif
 }
 
 static void app_printf(const char *fmt, ...)
@@ -194,7 +168,6 @@ void app_main(void)
         }
         tick++;
         vTaskDelay(pdMS_TO_TICKS(P04_PERIOD_S * 1000));
-        /* QEMU 文本断言窗口：探针可能晚连错过启动头，每 10s 重申一次（验收仍要求上电 1s 内首打） */
         if (tick % 10 == 0) {
             app_printf("OK boot p04_battery_voltage | divider=100K:30K v_full=%.2f v_cutoff=%.2f cap=%g mAh",
                        p->cfg.v_full, p->cfg.v_cutoff, p->cfg.capacity_mah);

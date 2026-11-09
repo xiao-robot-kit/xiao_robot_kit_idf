@@ -13,7 +13,7 @@
 
 | 宏 | 值 | 说明 |
 | --- | --- | --- |
-| `P_SIM_KEY` | 1（默认） | 合成按键序列：短按×3 + 长按×2 + 4~8ms 抖动注入，5.6s 跑完；QEMU 可测 |
+| `P_SIM_KEY` | 1（默认） | 合成按键序列：短按×3 + 长按×2 + 4~8ms 抖动注入，5.6s 跑完；无板可测 |
 | `P_SIM_KEY` | 0 | 真 GPIO11（内部上拉，按下=低），真板手按 |
 
 合成时序（`s_seq[]`）：E1 800-1120 短按(hold 320)；E2 2200 起长按(到点 3000 触发 LONG)；E3 3500-3800 短按；E4 4300-5105 长按边界(hold 805)；E5 5600-6395 短按边界(hold 795)。事件间隙插 4~8ms 抖动(< 消抖半窗口,吸收不计数)。
@@ -35,25 +35,21 @@ KEY done n=5 deb=0 jitter=0
 ## 构建 / 运行
 
 - 构建：`run.bat`（无参 = build；带 COMx = flash+monitor）
-- QEMU 文本断言：`run_qemu.bat`（合成档 + UART0，端口 5552）
   - 期望：`OK boot P-02_button_k7` / `KEY SHORT` / `KEY LONG` / `KEY done`
 
 ## 验证状态
 
-- ✅ 构建 + QEMU 文本断言（合成档）——见本目录 `run_qemu.bat` 输出
 - ⚠️ 真板按键实测（真 GPIO11 消抖/长按手感）**未验证**（无真板）
 
 ## 已知限制
 
 - 消抖用软件轮询而非 GPIO 中断（例程教学语义；真板手按 1ms 轮询足够）。
-- `deb/jitter` 统计只在 ≥10ms 的显著反跳时递增——QEMU 合成序列全部为干净吸收，无法在 QEMU 下演示计数非零（真板长按抖动可见）。
 ## 依赖声明（Dependencies）
 
 ### 构建依赖（Build）
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `%IDF_PATH%（默认 C:\esp\v6.1\esp-idf）` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `%IDF_PYTHON_ENV_PATH%（默认 C:\Espressif\python_env\idf6.1_py3.11_env）` | 同上 |
 | esp32s3 工具链 | 由 `export.bat` 注入 | 激活 IDF 环境失败即退出 |
 
@@ -62,8 +58,6 @@ KEY done n=5 deb=0 jitter=0
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU（`run_qemu.bat`） | `%QEMU_XTENSA%（内部 CI 注入）` | bat 启动检查，缺失打印 `[ERR] QEMU xtensa binary not found` 并退出 |
-| QEMU（内部 CI） | 见上：QEMU 引导与文本断言在私仓 CI 管道运行，公开副本不包含 |
 
 ### 硬件依赖（Hardware，真板档）
 

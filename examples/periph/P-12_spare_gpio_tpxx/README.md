@@ -16,28 +16,26 @@ U3 pad24/25（MTDI/MTDO），仅以测试点 TP20/TP21 引出，需飞线使用�
 - 引脚映射：**TP20 = MTDI = GPIO41**、**TP21 = MTDO = GPIO42**
   （ESP32-S3 strapping 引脚；Arduino variant TX1=42 / RX1=41 佐证）
 - 真板路径保留（`P_SIM_SPARE=0` 含真实 `gpio_config` / `gpio_set_level` /
-  `gpio_get_level` 代码）；QEMU 档走合成回环（`P_SIM_SPARE=1`）
+  `gpio_get_level` 代码）；SIM 档走合成回环（`P_SIM_SPARE=1`）
 
 ## 硬件约束（⚠ strapping 属性，任务书要求提示）
 
 - GPIO42（MTDO/TP21）是 ESP32-S3 **strapping 引脚**（VDD_SPI 电压选择，
   boot 早期采样）。真板飞线时必须保证**上电瞬间两脚无强下拉到 GND**，
-  否则可能改变启动行为（固件启动行打印该警告；QEMU 无此语义，仅透传）。
+  否则可能改变启动行为（固件启动行打印该警告）。
 - GPIO41（MTDI/TP20）同样为 strapping 引脚（JTAG 模式选择侧）。
 - 真板验证需要：一片飞线把 TP20 ↔ TP21 互联（loopback），或分别接
   外部电平源/负载；任务书 §4.1 说明扩展只能走 I2C(J11/J12) 或 UART(J10)。
 
 ## 双数据源（编译期宏）
 
-| 宏 | 1（QEMU 档，默认） | 0（真板档） |
+| 宏 | 1（SIM 档，默认） | 0（真板档） |
 |---|---|---|
 | `P_SIM_SPARE` | 合成回环：内存电平表模拟飞线互联（写任一脚→双槽同步→读回同电平） | 真实 GPIO41/42：`gpio_config` + `gpio_set_level`/`gpio_get_level` |
-| `EXP_QEMU_UART` | 遥测出口 UART0（QEMU `-serial tcp:...,server` 槽） | 遥测出口 USB-Serial-JTAG（真板 USB-C） |
 
 构建：`idf.py build`（默认档）或
-`idf.py -C examples\periph\P-12_spare_gpio_tpxx -B ...\build-qemu -DP_SIM_SPARE=1 -DEXP_QEMU_UART=1 build`（QEMU 档）。
 
-## 输出格式（SIM/QEMU 档）
+## 输出格式（SIM/SIM 档）
 
 ```
 OK boot P-12_spare_gpio_tpxx v0.1.0 | board=XIAO Robot Board V1.0 | mcu=XIAO ESP32-S3 Plus | (SIM LOOPBACK)
@@ -56,10 +54,8 @@ SPARE done mismatch=(0,0) -> VERDICT PASS
 
 ## 验证
 
-公开仓形态：`run_qemu.bat` 只构建 SIM 变体（`-DP_SIM_SPARE=1 -DEXP_QEMU_UART=1`），
 用于确认例程能在公开仓自包含构建通过。
 
-QEMU 引导 + UART0 文本断言（`5/5 命中`）属于本项目内部 CI 流程，公开仓不附带 runner 与断言脚本。
 真板路径（`P_SIM_SPARE=0`）待真板 + TP20/TP21 飞线实测（当前无真板环境）。
 
 ## 依赖声明（Dependencies）
@@ -68,7 +64,6 @@ QEMU 引导 + UART0 文本断言（`5/5 命中`）属于本项目内部 CI 流�
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `%IDF_PATH%（默认 C:\esp\v6.1\esp-idf）` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `%IDF_PYTHON_ENV_PATH%（默认 C:\Espressif\python_env\idf6.1_py3.11_env）` | 同上 |
 | esp32s3 工具链 | 由 export.bat 注入 | 激活 IDF 环境失败即退出 |
 
@@ -77,8 +72,6 @@ QEMU 引导 + UART0 文本断言（`5/5 命中`）属于本项目内部 CI 流�
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU（`run_qemu.bat`） | `%QEMU_XTENSA%（内部 CI 注入）` | bash 脚本检查，缺失打印 `QEMU 不存在` 并退出 |
-| QEMU（内部 CI） | 见上：QEMU 引导与文本断言在私仓 CI 管道运行，公开副本不包含 |
 
 ### 硬件依赖（Hardware，真板档 `P_SIM_SPARE=0`）
 

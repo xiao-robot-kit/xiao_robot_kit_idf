@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Name,   Type, SubType, Offset,   Size,    Flags
 # 2MB flash：默认 singleapp 布局 + 自定义 data 分区「store」（pstore flash 后端介质）
-# 分区偏移显式锚定（与 QEMU 镜像 prepare 的 flash_args 一致，防布局漂移）：
+# 分区偏移显式锚定（与 SIM 镜像 prepare 的 flash_args 一致，防布局漂移）：
 #   nvs/phy_init 与出厂表一致；factory app 1M；store 64KB 跟在 app 后，
 #   容量远大于 pstore 帧（4096B 上限），留磨损均衡/多槽升级余地。
 #   store subtype 0x40 = ESP_PARTITION_SUBTYPE_DATA_UNDEFINED 自定义（app 专用）。

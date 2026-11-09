@@ -1,6 +1,6 @@
 # P-08 i2c_scan_ports — I2C 总线扫描 + 地址表管理
 
-> 类目：外设例程（periph）· Wave 3 ｜ 任务卡 T-031 ｜ 状态：**构建 + QEMU 断言已收口，真板未验证**（无板，联调项待 T-017）
+> 类目：外设例程（periph）· Wave 3 ｜ 任务卡 T-031 ｜ 状态：**构建已收口，真板未验证**（无板，联调项待 T-017）
 
 ## 一、覆盖点（任务书 §3 P-08）
 
@@ -24,18 +24,15 @@
 
 ## 三、双数据源宏（编译期，见 main/CMakeLists.txt）
 
-- `P_SIM_SCAN=1`（默认）：合成扫描（零 I2C 依赖，QEMU 可测；回显 0x6A + 演示 0x40 NEW）
+- `P_SIM_SCAN=1`（默认）：合成扫描（零 I2C 依赖，无板可测；回显 0x6A + 演示 0x40 NEW）
 - `P_SIM_SCAN=0`：真 I2C 扫描——复用 port 层 `esp_port_i2c_probe` 端点（i2c_master_probe，
-  不建器件句柄，任意地址探测）；QEMU 档必须走 SIM（无真实 I2C 器件）
-- `EXP_QEMU_UART=1`：输出层 UART0（QEMU chardev 出口）；默认 USB-Serial-JTAG（真板）
+  不建器件句柄，任意地址探测）；SIM 档必须走 SIM（无真实 I2C 器件）
 
 ## 四、验证记录
 
 | 验证 | 命令 | 结果 |
 |---|---|---|
 | default 档构建 | `run.bat` | ✅ bin 168,048 B（2026-11-07 实测） |
-| QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_SCAN=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 188,880 B（2026-11-07 实测） |
-| QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
 ## 五、组件对接（P-08 → xiao_* 组件）
 
@@ -51,7 +48,6 @@
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `D:\esp\v6.1\esp-idf` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `D:\Espressif\python_env\idf6.1_py3.11_env` | 同上 |
 | esp32s3 工具链 | 由 `export.bat` 注入 | 激活 IDF 环境失败即退出 |
 
@@ -60,7 +56,6 @@
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU | bash（Git for Windows / MSYS） | `run_qemu.bat` 检查 `where bash`，缺失提示安装并退出 |
 
 ### 硬件依赖（Hardware，真板档）
 

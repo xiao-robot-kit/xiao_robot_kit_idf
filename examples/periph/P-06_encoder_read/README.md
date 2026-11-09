@@ -1,6 +1,6 @@
 # P-06 encoder_read — 编码器读取例程（SPIN 手转 + DRIVE 闭环）
 
-> 类目：外设例程（periph）· Wave 2 ｜ 任务卡 T-029 ｜ 状态：**构建已完成，QEMU 断言回填中**（真板未验证，联调项待 T-017）
+> 类目：外设例程（periph）· Wave 2 ｜ 任务卡 T-029 ｜ 状态：**构建已完成，回填中**（真板未验证，联调项待 T-017）
 
 ## 一、覆盖点
 
@@ -21,16 +21,13 @@
 
 | 宏 | 1 | 0 |
 |---|---|---|
-| `P_SIM_MOTOR` | 合成 PWM/编码器 HAL（QEMU 可测，**默认**） | 真硬件 LEDC + 真编码器 GPIO 边沿中断 HAL（**未提供，构建期 #error 显式拒绝**） |
-| `EXP_QEMU_UART` | 遥测出口 = UART0（QEMU 档） | 遥测出口 = USB-Serial-JTAG（真板档） |
+| `P_SIM_MOTOR` | 合成 PWM/编码器 HAL（无板可测，**默认**） | 真硬件 LEDC + 真编码器 GPIO 边沿中断 HAL（**未提供，构建期 #error 显式拒绝**） |
 
 ## 四、验证
 
 | 验证 | 命令 | 结果 |
 |---|---|---|
 | default 档构建 | `run.bat` | ✅ bin 196,272 B（2026-11-07 实测） |
-| QEMU 档构建 | `run_qemu.bat`（`-DP_SIM_MOTOR=1 -DEXP_QEMU_UART=1`，build-qemu） | ✅ bin 196,272 B（2026-11-07 实测） |
-| QEMU 文本断言 | 本项目内部 CI 流程（公开仓不含 QEMU runner 与断言脚本） | 本仓仅构建 SIM 变体；`run_qemu.bat` 只做编译验证 |
 
 > 真板验证项（待 T-017）：M1 手转方向与计数极性、手转 1 圈 = 7200 计数、DRIVE ±120° 到位误差、与 P-05 曲线 RPM 对照。
 
@@ -44,7 +41,6 @@
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `D:\esp\v6.1\esp-idf` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `D:\Espressif\python_env\idf6.1_py3.11_env` | 同上 |
 | esp32s3 工具链 | 由 `export.bat` 注入 | 激活 IDF 环境失败即退出 |
 
@@ -53,7 +49,6 @@
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU | bash（Git for Windows / MSYS） | `run_qemu.bat` 检查 `where bash`，缺失提示安装并退出 |
 
 ### 硬件依赖（Hardware，真板档）
 

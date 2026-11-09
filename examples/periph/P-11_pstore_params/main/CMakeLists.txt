@@ -9,10 +9,6 @@ set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
 set(SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../_shared)
 
-# EXP_QEMU_UART: 1 = output on UART0 (QEMU chardev path); 0 (default) = USB-Serial-JTAG
-if(NOT DEFINED EXP_QEMU_UART)
-    set(EXP_QEMU_UART 0)
-endif()
 
 set(P11_SRCS
     "p11_pstore_main.c"
@@ -22,7 +18,7 @@ set(P11_INCS
     "${SHARED_DIR}")
 
 # REQUIRES listed unconditionally (IDF component discovery runs before cmake -D
-# cache evaluation, same rule as store_demo)
+# cache evaluation)
 idf_component_register(
     SRCS ${P11_SRCS}
     INCLUDE_DIRS ${P11_INCS}
@@ -32,5 +28,3 @@ idf_component_register(
 add_subdirectory(${LIBS_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/xiao_libs)
 target_link_libraries(${COMPONENT_LIB} PUBLIC xiao_pstore)
 
-target_compile_definitions(${COMPONENT_LIB} PUBLIC
-    EXP_QEMU_UART=${EXP_QEMU_UART})

@@ -12,7 +12,7 @@
 
 | 宏 | 值 | 说明 |
 | --- | --- | --- |
-| `P_SIM_LED` | 1（默认） | 合成灯带：相位→色轮渐变 + 单灯定点，内存缓冲零硬件；QEMU 可测 |
+| `P_SIM_LED` | 1（默认） | 合成灯带：相位→色轮渐变 + 单灯定点，内存缓冲零硬件；无板可测 |
 | `P_SIM_LED` | 0 | 真 RMT 发 GPIO13（真板 + J7 灯带；`esp_driver_rmt` 自带零外部依赖） |
 
 色轮：0°红 → 120°绿 → 240°蓝 → 360°回红（`hue_to_rgb` 线性插值，三分点命名常量）。全带相位渐变 + 灯 0/5 反相位定点（视觉上固定不动，验证单灯定点控制）。
@@ -34,12 +34,10 @@ HUE 240 r0 g0 b255
 ## 构建 / 运行
 
 - 构建：`run.bat`（无参 = build；带 COMx = flash+monitor）
-- QEMU 文本断言：`run_qemu.bat`（合成档 + UART0，端口 5553）
   - 期望：`OK boot P-03_rgb_ws2812` / `LED phase=` / `HUE 0 r255 g0 b0` / `HUE 120 r0 g255 b0` / `HUE 240 r0 g0 b255`
 
 ## 验证状态
 
-- ✅ 构建 + QEMU 文本断言（合成档）——见本目录 `run_qemu.bat` 输出
 - ⚠️ 真灯带实测（RMT 时序/5V 缓冲链路/J7 亮度）**未验证**（无真板/灯带）
 
 ## 已知限制
@@ -52,7 +50,6 @@ HUE 240 r0 g0 b255
 
 | 依赖 | 路径 | 缺失时脚本行为 |
 |---|---|---|
-| ESP-IDF v6.1 SDK（含 `export.bat`） | `%IDF_PATH%（默认 C:\esp\v6.1\esp-idf）` | `run.bat`/`run_qemu.bat` 启动检查，缺失打印 `[ERR] ... not found` 并退出 |
 | IDF Python 虚拟环境 | `%IDF_PYTHON_ENV_PATH%（默认 C:\Espressif\python_env\idf6.1_py3.11_env）` | 同上 |
 | esp32s3 工具链 | 由 `export.bat` 注入 | 激活 IDF 环境失败即退出 |
 
@@ -61,8 +58,6 @@ HUE 240 r0 g0 b255
 | 场景 | 依赖 | 缺失时行为 |
 |---|---|---|
 | 真板（`run.bat COMx`） | XIAO ESP32-S3 + USB-C 数据线（USB-Serial-JTAG），COM 口 | 无 COM 参数时仅构建不烧录（脚本提示） |
-| QEMU（`run_qemu.bat`） | `%QEMU_XTENSA%（内部 CI 注入）` | bat 启动检查，缺失打印 `[ERR] QEMU xtensa binary not found` 并退出 |
-| QEMU（内部 CI） | 见上：QEMU 引导与文本断言在私仓 CI 管道运行，公开副本不包含 |
 
 ### 硬件依赖（Hardware，真板档）
 

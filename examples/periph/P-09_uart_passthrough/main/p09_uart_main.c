@@ -5,22 +5,17 @@
  *
  * 硬件约束（任务书 §4，写进每个例程注释头）：
  *  - J10 = Grove UART：UART0_TX(D6)/UART0_RX(D7)，115200 8N1（任务书 §3 P-09）。
- *  - UART0 数据面与 USB-Serial-JTAG 日志面并存：真板档（EXP_QEMU_UART=0）文本走
  *    USB CDC，数据走 UART0——互不干扰（任务书验收「与 USB CDC 并存」）。
  *  - 板载无固件可控 LED → 调试可视输出一律串口。
  *
  * 验收（任务书 §3 P-09）：
  *  ① 环回/透传 115200 双向 10min 零丢包 → "LOOP tx=1000 rx=1000 loss=0 crc=OK"
- *    （逐轮统计；任务书 10min 为真板项，QEMU 档跑短窗演示同判据）；
  *  ② 与 USB CDC 并存 → 数据面（UART0）与日志面（USB CDC）分离输出。
  *
  * 数据源二选一（编译期宏 P_SIM_UART，见 main/CMakeLists.txt，默认 1）：
  *  - P_SIM_UART=1：软件回环（生成测试模式→入 ring buffer→读回比对，零外设依赖，
- *    QEMU 可测）。文本输出层仍遵循 EXP_QEMU_UART（QEMU 无 USB-Serial-JTAG 出口）。
  *  - P_SIM_UART=0：真 UART0 回环/透传（J10 短接 TX-RX 或外接对端；duty/统计经
- *    USB CDC 打印）。QEMU 档必须走 SIM（QEMU UART0 单向 chardev 出口，无收侧）。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU 第 1 个 -serial 槽，有 chardev 出口）；
  *  0（默认）→ USB-Serial-JTAG（真板）。串口参数 115200 8N1（数据口同参）。
  */
 
@@ -31,11 +26,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #if !P_SIM_UART
 #include "driver/uart.h"          /* 真回环档：UART0 数据口 */
 #endif
@@ -63,19 +54,12 @@ static bool s_replay_ok = false;
 
 static void output_raw(const char *s)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, s, strlen(s));
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)s, strlen(s),
                                 pdMS_TO_TICKS(APP_TX_TIMEOUT_MS));
-#endif
 }
 
 static void output_flush(void)
 {
-#if EXP_QEMU_UART
-    uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(300));
-#endif
 }
 
 /** @brief 事件统一出口：入回放缓冲 + 实时输出（P-02 模式） */
@@ -150,18 +134,6 @@ static uint32_t real_loop(uint8_t *buf, uint32_t n)
 
 void app_main(void)
 {
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_driver_install(UART_NUM_0, 4096, 4096, 0, NULL, 0);
-    uart_param_config(UART_NUM_0, &uc);
-#endif
 
     event_log("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
               APP_BOARD, APP_MCU);

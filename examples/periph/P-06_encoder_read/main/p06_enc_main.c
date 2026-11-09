@@ -4,8 +4,6 @@
  * @brief   P-06 编码器计数例程（N20 @ motor.enc.n20，cpr=7200）
  *
  * 链路：motor 组件（motor.enc.n20 @ pwm.motor.20k）+ 合成编码器 HAL/plant
- *       （examples/_shared/motor_hal_sim.c，QEMU 无 PCNT/编码器模型）
- *       → 文本遥测 → UART0（EXP_QEMU_UART=1，QEMU 档）/ USB-Serial-JTAG（真板档）。
  *
  * 演示两段（有限序列，事件回放每 1s 重放全量切换过程；P-02 模式）：
  *   Phase A 手转模拟（SPIN）：直接向桥双通道写占空（模拟外部转动手轮）
@@ -22,9 +20,7 @@
  *       防共轨堵转电流超预算；真板验收对象为「手转得计数、电转收转速」两断言。
  *
  * 宏契约（CMake 定义，两态显式）：
- *   P_SIM_MOTOR   1=合成 HAL（本例程默认，QEMU 可测）；0=真硬件 LEDC/PCNT HAL——
  *                 未提供，C 侧 #error 拒绝（不静默编出假硬件固件，ERR-004 纪律）。
- *   EXP_QEMU_UART 1=遥测出口 UART0（QEMU 第 1 个 -serial 槽）；0=USB-Serial-JTAG（真板）。
  */
 #include <stdio.h>
 #include <string.h>
@@ -47,9 +43,6 @@
 #if P_SIM_MOTOR == 0
 #error "P_SIM_MOTOR=0: real LEDC/PCNT HAL not provided by port yet (ERR-004) — use sim"
 #endif
-#ifndef EXP_QEMU_UART
-#error "EXP_QEMU_UART undefined: set 1=UART0 (QEMU) or 0=USB-Serial-JTAG (board)"
-#endif
 
 /* ---- 场景参数（单电机 M1；Phase A 手转 / Phase B 电转） ---- */
 #define EXP_POLL_US        10000u          /* 100Hz：plant 步长与控制环同频 */
@@ -68,11 +61,7 @@
 #define DRIVE_STOP_US      1000000u       /* 零目标 1s */
 #define FAST_TX            115200
 
-#if EXP_QEMU_UART == 1
 #define EXP_UART_NUM       UART_NUM_0
-#else
-#define EXP_UART_NUM       UART_NUM_0
-#endif
 /* ---- Phase 状态机 ---- */
 typedef enum {
     PHASE_SPIN_FWD = 0,
@@ -112,23 +101,8 @@ static void event_log(const char *s)
 
 static void uart_init(void)
 {
-#if EXP_QEMU_UART == 1
-    /* QEMU 档：UART0 安装驱动（第 1 个 -serial 槽收文本遥测） */
-    uart_config_t cfg = {
-        .baud_rate = FAST_TX,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-    };
-    esp_err_t rc = uart_driver_install(EXP_UART_NUM, 256, 0, 0, NULL, 0);
-    if (rc != ESP_OK) return;
-    uart_param_config(EXP_UART_NUM, &cfg);
-    uart_vfs_dev_use_driver(EXP_UART_NUM);
-#else
     /* 真板档：USB-Serial-JTAG 由 esp_console 接管，输出面经 app_puts 直推 */
     (void)0;
-#endif
 }
 
 static void output_flush(void)
@@ -322,8 +296,8 @@ void app_main(void)
 
     char boot[96];
     snprintf(boot, sizeof(boot),
-             "OK boot P-06_encoder_read cpr=7200 rate=%uHz sim_motor=1 qemu_uart=%d\n",
-             (unsigned)EXP_POLL_RATE, EXP_QEMU_UART);
+             "OK boot P-06_encoder_read cpr=7200 rate=%uHz sim_motor=1\n",
+             (unsigned)EXP_POLL_RATE);
     event_log(boot);
     output_flush();
 

@@ -2,7 +2,6 @@
 # Build artifacts only - sources are all tracked.
 # sdkconfig is generated from sdkconfig.defaults by idf.py; never track it.
 build/
-build-qemu/
 managed_components/
 sdkconfig
 sdkconfig.old

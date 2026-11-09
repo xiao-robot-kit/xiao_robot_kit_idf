@@ -10,15 +10,10 @@
 set(LIBS_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../..)   # repository root
 
 # P_SIM_HEAT: 1 (default) = synthetic temperature scenario (zero peripheral
-#             deps, QEMU-testable, exercises control+protection chain);
 #             0 = real hardware mode (LEDC heater PWM + IMU temp readout - HAL
 #             not provided, rejected by #error in main)
-# QEMU builds must use P_SIM_HEAT=1
 if(NOT DEFINED P_SIM_HEAT)
     set(P_SIM_HEAT 1)
-endif()
-if(NOT DEFINED EXP_QEMU_UART)
-    set(EXP_QEMU_UART 0)
 endif()
 
 set(P10_SRCS "p10_imu_heater_main.c")
@@ -35,4 +30,4 @@ target_link_libraries(${COMPONENT_LIB} PUBLIC
     xiao_imu_heater xiao_calibration xiao_imu)
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC
-    P_SIM_HEAT=${P_SIM_HEAT} EXP_QEMU_UART=${EXP_QEMU_UART})
+    P_SIM_HEAT=${P_SIM_HEAT})

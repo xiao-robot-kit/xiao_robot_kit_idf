@@ -5,16 +5,13 @@
  *
  * 硬件约束（任务书 §4）：
  *  - 本例程零外设依赖（纯存储演示）：介质 = flash 自定义 data 分区「store」
- *    （examples/_shared/pstore_flash.c，T-006 先例，QEMU 断电重启实验同款）；
  *  - 参数语义锚任务书：motor.cal（电机校准，占空比-转速标定参数）与
  *    servo.center（舵机中位脉冲宽），都直接由 pstore 组件序列化落盘。
  *
  * 验收（任务书 §3 P-11）：电机校准/舵机中位参数**写入断电重启后读回一致**。
- *  双段实验（QEMU 强杀模拟断电，同镜像二次启动，介质不改动）：
  *   段一 fresh：load 无数据（空白介质）→ 写入非默认校准值 → save → "P11 SET ok"；
  *   段二 power-cycle：同一镜像重启 → load 命中 → 读回 = 写入值 → "P11 GET ... MATCH=1"。
  *
- * 输出层：EXP_QEMU_UART=1 → UART0（QEMU chardev 出口）；0（默认）→ USB-Serial-JTAG。
  * 串口参数：115200 8N1。
  *
  * pstore 组件（vendor/xiao 组件库）：单帧多条目（CRC32 覆盖 count+data），
@@ -26,11 +23,7 @@
 #include <stdarg.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#if EXP_QEMU_UART
-#include "driver/uart.h"
-#else
 #include "driver/usb_serial_jtag.h"
-#endif
 #include "pstore/pstore.h"
 #include "pstore_flash.h"       /* port/esp_idf：flash 裸分区后端（介质） */
 
@@ -70,12 +63,8 @@ static const servo_center_t WANT_SERVO = { 1542, 300 };          /* 写入值（
 
 static void output_raw(const char *s)
 {
-#if EXP_QEMU_UART
-    uart_write_bytes(UART_NUM_0, s, strlen(s));
-#else
     usb_serial_jtag_write_bytes((const uint8_t *)s, strlen(s),
                                 pdMS_TO_TICKS(100));
-#endif
 }
 
 static void say(const char *fmt, ...)
@@ -87,27 +76,12 @@ static void say(const char *fmt, ...)
     va_end(ap);
     output_raw(line);
     output_raw("\r\n");
-#if EXP_QEMU_UART
-    uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(200));
-#endif
 }
 
 /* ---------------------------------------------------------------- 主流程 */
 
 void app_main(void)
 {
-#if EXP_QEMU_UART
-    const uart_config_t uc = {
-        .baud_rate  = APP_UART_BAUD,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    uart_driver_install(UART_NUM_0, 2048, 2048, 0, NULL, 0);
-    uart_param_config(UART_NUM_0, &uc);
-#endif
 
     say("OK boot %s v=%s board=%s mcu=%s", APP_NAME, APP_VERSION,
         APP_BOARD, APP_MCU);

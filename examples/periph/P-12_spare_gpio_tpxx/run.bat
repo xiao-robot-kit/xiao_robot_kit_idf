@@ -15,7 +15,6 @@ rem  DEPENDENCIES (checked at startup, explicit error if missing):
 rem    - ESP-IDF SDK  : %IDF_PATH%\export.bat  (ESP-IDF v6.1)
 rem    - Python env   : %IDF_PYTHON_ENV_PATH%  (idf6.1 virtualenv)
 rem
-rem  QEMU simulation: use run_qemu.bat instead (not this script).
 rem =====================================================================
 setlocal
 set MSYSTEM=
