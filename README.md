@@ -38,7 +38,7 @@ standalone ESP-IDF project built against the `xiao_*` libraries in this repo.
 | --- | --- | --- | --- |
 | `xiao_imu` | `src/imu/` | LSM6DS3TR-C six-axis driver: probe → configure from semantic presets (Hz / g / dps) → samples in physical units | 29 assertions |
 | `xiao_attitude` | `src/attitude/` | Quaternion math + Mahony complementary filter (gyro + accel → roll/pitch/yaw) | 107 assertions |
-| `xiao_motor` | `src/motor/` | Motor instances on a HAL: PWM timer, PID speed loop with anti-windup, 7-phase constant-jerk S-curve trajectories | 1022 assertions (module suites: pid 78 / pwm_timer 119 / scurve 19) |
+| `xiao_motor` | `src/motor/` | Motor instances on a HAL: PWM timer, PID speed loop with anti-windup, 7-phase constant-jerk S-curve trajectories | 1238 assertions (motor 1022 + pid 78 + pwm_timer 119 + scurve 19) |
 | `xiao_pstore` | `src/pstore/` | Parameter persistence: item registry, framed serialization, CRC32, two-phase atomic load | 153 assertions |
 | `xiao_battery` | `src/battery/` | Battery voltage / remaining capacity (SOC) curve computation, pure algorithm, zero platform deps | 35 assertions |
 | `xiao_calibration` | `src/calibration/` | IMU calibration (6-axis bias + temp compensation), uses xiao_imu types | 3402 assertions |
@@ -62,8 +62,8 @@ Then in `main.c` (~20 lines):
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "lsm6ds3.h"        /* xiao_imu */
-#include "imu_cfg.h"
+#include "imu/lsm6ds3.h"    /* xiao_imu — headers keep their component prefix */
+#include "imu/imu_cfg.h"
 #include "bus_i2c_idf.h"    /* your glue: fills imu_i2c_bus_t — see examples/idf */
 
 void app_main(void)
